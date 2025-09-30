@@ -21,3 +21,20 @@ body { @apply bg-slate-50 text-slate-800 antialiased; }
 .btn-disabled { @apply border border-slate-200 bg-slate-50 text-slate-400 cursor-not-allowed; }
 .input-sm { @apply h-8 px-2 py-1 text-sm; }
 .btn-sm { @apply h-8 px-3 py-1 text-sm; }
+
+/* Enlaces del navbar (público) – animación más suave */
+.nav-link {
+  position: relative;
+}
+.nav-link::after {
+  content: "";
+  position: absolute;
+  left: 0;
+  bottom: -6px;
+  height: 2px;
+  width: 0;
+  background: linear-gradient(90deg, #6366f1, #0ea5e9);
+  border-radius: 9999px;
+  transition: width .25s ease;
+}
+.nav-link:hover::after { width: 100%; }

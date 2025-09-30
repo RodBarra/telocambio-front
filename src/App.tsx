@@ -11,12 +11,31 @@ import AdminComunidadesList from "./pages/admin/AdminComunidadesList";
 import ModUsuarios from "./pages/mod/ModUsuarios";
 import ModPadron from "./pages/mod/ModPadron";
 
-function Shell({ children }: { children: React.ReactNode }) {
+// público
+import PublicNavbar from "./components/PublicNavbar";
+import SiteFooter from "./components/SiteFooter";
+import Ofertas from "./pages/Ofertas";
+import Nosotros from "./pages/Nosotros";
+import ComoFunciona from "./pages/ComoFunciona";
+import Contacto from "./pages/Contacto";
+
+function PrivateShell({ children }: { children: React.ReactNode }) {
   return (
     <>
       <Navbar />
       <main>{children}</main>
+      <SiteFooter />
     </>
+  );
+}
+
+function PublicShell({ children }: { children: React.ReactNode }) {
+  return (
+    <div className="min-h-screen flex flex-col">
+      <PublicNavbar />
+      <main className="flex-1">{children}</main>
+      <SiteFooter />
+    </div>
   );
 }
 
@@ -25,17 +44,21 @@ export default function App() {
     <Routes>
       {/* público */}
       <Route path="/" element={<Navigate to="/login" replace />} />
-      <Route path="/login" element={<Login />} />
-      <Route path="/register" element={<Register />} />
+      <Route path="/login" element={<PublicShell><Login /></PublicShell>} />
+      <Route path="/register" element={<PublicShell><Register /></PublicShell>} />
+      <Route path="/ofertas" element={<PublicShell><Ofertas /></PublicShell>} />
+      <Route path="/nosotros" element={<PublicShell><Nosotros /></PublicShell>} />
+      <Route path="/como-funciona" element={<PublicShell><ComoFunciona /></PublicShell>} />
+      <Route path="/contacto" element={<PublicShell><Contacto /></PublicShell>} />
 
       {/* privado */}
       <Route
         path="/dashboard"
         element={
           <ProtectedRoute>
-            <Shell>
+            <PrivateShell>
               <Dashboard />
-            </Shell>
+            </PrivateShell>
           </ProtectedRoute>
         }
       />
@@ -45,9 +68,9 @@ export default function App() {
         path="/admin/comunidades/nueva"
         element={
           <ProtectedRoute roles={[1]}>
-            <Shell>
+            <PrivateShell>
               <AdminCreateComunidad />
-            </Shell>
+            </PrivateShell>
           </ProtectedRoute>
         }
       />
@@ -55,9 +78,9 @@ export default function App() {
         path="/admin/moderador/nuevo"
         element={
           <ProtectedRoute roles={[1]}>
-            <Shell>
+            <PrivateShell>
               <AdminCreateModerador />
-            </Shell>
+            </PrivateShell>
           </ProtectedRoute>
         }
       />
@@ -65,9 +88,9 @@ export default function App() {
         path="/admin/comunidades"
         element={
           <ProtectedRoute roles={[1]}>
-            <Shell>
+            <PrivateShell>
               <AdminComunidadesList />
-            </Shell>
+            </PrivateShell>
           </ProtectedRoute>
         }
       />
@@ -77,9 +100,9 @@ export default function App() {
         path="/mod/usuarios"
         element={
           <ProtectedRoute roles={[1, 2]}>
-            <Shell>
+            <PrivateShell>
               <ModUsuarios />
-            </Shell>
+            </PrivateShell>
           </ProtectedRoute>
         }
       />
@@ -87,9 +110,9 @@ export default function App() {
         path="/mod/padron"
         element={
           <ProtectedRoute roles={[1, 2]}>
-            <Shell>
+            <PrivateShell>
               <ModPadron />
-            </Shell>
+            </PrivateShell>
           </ProtectedRoute>
         }
       />
