@@ -1,8 +1,20 @@
 import { FormEvent, useState } from "react";
 import { useNavigate, Link } from "react-router-dom";
 import { useAuth } from "../context/AuthContext";
-import { AlertErr } from "../components/Alert";
-import { Field } from "../components/Form";
+
+const AlertPopup = ({ message, onClose }) => (
+  <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4">
+    <div className="w-full max-w-sm rounded-lg bg-white p-6 text-center shadow-xl">
+      <p className="text-lg text-slate-800">{message}</p>
+      <button
+        onClick={onClose}
+        className="btn btn-primary mt-4 flex justify-center px-8"
+      >
+        Cerrar
+      </button>
+    </div>
+  </div>
+);
 
 type Errors = Partial<Record<"correo" | "password", string>>;
 
@@ -12,22 +24,34 @@ export default function Login() {
 
   const [correo, setCorreo] = useState("");
   const [password, setPassword] = useState("");
-  const [errBanner, setErrBanner] = useState<string | null>(null);
+  const [alertMessage, setAlertMessage] = useState<string>("");
   const [errors, setErrors] = useState<Errors>({});
 
-  const validate = (): boolean => {
-    const e: Errors = {};
-    if (!correo) e.correo = "Ingresa tu correo.";
-    else if (!/\S+@\S+\.\S+/.test(correo)) e.correo = "Formato de correo inválido.";
-    if (!password) e.password = "Ingresa tu contraseña.";
-    setErrors(e);
-    return Object.keys(e).length === 0;
+  const validate = (field?: keyof Errors): boolean => {
+    const newErrors: Errors = { ...errors };
+
+    if (field === "correo" || !field) {
+      if (!correo) newErrors.correo = "Por favor, ingresa tu correo.";
+      else if (!/\S+@\S+\.\S+/.test(correo)) newErrors.correo = "El formato del correo no es válido.";
+      else delete newErrors.correo;
+    }
+
+    if (field === "password" || !field) {
+      if (!password) newErrors.password = "Por favor, ingresa tu contraseña.";
+      else delete newErrors.password;
+    }
+
+    setErrors(newErrors);
+    if (!field) return Object.keys(newErrors).length === 0;
+    return false;
   };
 
-  const onSubmit = async (e: FormEvent) => {
+  const handleSubmit = async (e: FormEvent) => {
     e.preventDefault();
-    setErrBanner(null);
+    setAlertMessage("");
+
     if (!validate()) return;
+
     try {
       await login(correo, password);
       nav("/dashboard");
@@ -36,13 +60,19 @@ export default function Login() {
         e?.response?.data?.detail ||
         e?.response?.data?.reason ||
         "No se pudo iniciar sesión. Verifica tus datos.";
-      setErrBanner(msg);
+      setAlertMessage(msg);
     }
   };
 
   return (
     <section className="relative">
-      {/* Fondo + overlay */}
+      {alertMessage && (
+        <AlertPopup
+          message={alertMessage}
+          onClose={() => setAlertMessage("")}
+        />
+      )}
+
       <div
         className="absolute inset-0 -z-10 bg-cover bg-center"
         style={{ backgroundImage: "url('/hero-login.jpg')" }}
@@ -50,56 +80,81 @@ export default function Login() {
       />
       <div className="absolute inset-0 -z-10 bg-black/35" aria-hidden />
 
-      {/* Contenedor centrado vertical/horizontal bajo el navbar (64px aprox) */}
-      <div className="min-h-[calc(100vh-64px)] grid place-items-center px-4">
-        {/* Card modal centrado */}
-        <div className="w-full max-w-xl rounded-2xl border border-white/50 bg-white/90 p-6 shadow-2xl backdrop-blur-md">
-          {errBanner && (
-            <div className="mb-4">
-              <AlertErr>{errBanner}</AlertErr>
+      <div className="min-h-[calc(100vh-64px)] grid place-items-center px-4 py-8">
+        <div className="w-full max-w-4xl overflow-hidden rounded-2xl bg-white shadow-2xl md:grid md:grid-cols-2">
+          
+          {/* --- CAMBIOS AQUÍ --- */}
+          <div className="hidden flex-col items-center justify-center bg-indigo-600 p-12 text-center md:flex">
+            <img 
+              src="/logo-telocambio.png" 
+              alt="Logo TeLoCambio" 
+              className="w-70" // 1. MÁS GRANDE (w-40) y 2. EN COLORES (sin 'invert brightness-0')
+            />
+            <h2 className="mt-6 text-2xl font-bold text-white">
+              Bienvenido de vuelta
+            </h2>
+            <p className="mt-2 text-indigo-100">
+              Accede a tu comunidad para descubrir nuevas oportunidades de intercambio.
+            </p>
+          </div>
+          {/* --- FIN DE LOS CAMBIOS --- */}
+
+          <div className="p-8">
+            <h2 className="text-2xl font-bold text-slate-900">Inicia sesión</h2>
+            <p className="mb-6 text-slate-600">
+              Ingresa tus credenciales para continuar
+            </p>
+
+            <form className="space-y-4" onSubmit={handleSubmit} noValidate>
+              <div className="space-y-1">
+                <label className="text-sm font-medium text-slate-700">Correo</label>
+                <input
+                  type="email"
+                  onBlur={() => validate("correo")}
+                  className={`input w-full ${errors.correo ? "border-red-500" : "focus:ring-brand/30"}`}
+                  value={correo}
+                  onChange={(e) => setCorreo(e.target.value)}
+                  placeholder="tu@correo.cl"
+                />
+                {errors.correo && <p className="text-xs text-red-600">{errors.correo}</p>}
+              </div>
+
+              <div className="space-y-1">
+                <label className="text-sm font-medium text-slate-700">Contraseña</label>
+                <input
+                  type="password"
+                  onBlur={() => validate("password")}
+                  className={`input w-full ${errors.password ? "border-red-500" : "focus:ring-brand/30"}`}
+                  value={password}
+                  onChange={(e) => setPassword(e.target.value)}
+                  placeholder="••••••••"
+                />
+                {errors.password && <p className="text-xs text-red-600">{errors.password}</p>}
+              </div>
+
+              <button className="btn-primary flex w-full justify-center pt-2 pb-2" disabled={loading}>
+                {loading ? "Ingresando..." : "Iniciar sesión"}
+              </button>
+            </form>
+
+            <div className="mt-6 text-center text-sm text-slate-600">
+              <div>
+                ¿No tienes cuenta?{" "}
+                <Link to="/register" className="font-medium text-indigo-600 hover:underline">
+                  Crear cuenta
+                </Link>
+              </div>
+              <div className="mt-2">
+                <Link
+                  to="#"
+                  onClick={(e) => e.preventDefault()}
+                  className="font-medium text-slate-400 cursor-not-allowed"
+                  aria-disabled="true"
+                >
+                  ¿Olvidó su clave?
+                </Link>
+              </div>
             </div>
-          )}
-
-          <h2 className="text-xl font-semibold text-slate-900">Inicia sesión</h2>
-          <p className="mb-4 text-sm text-slate-600">
-            Ingresa tus credenciales para continuar
-          </p>
-
-          <form className="space-y-4" onSubmit={onSubmit} noValidate>
-            <Field label="Correo" error={errors.correo}>
-              <input
-                type="email"
-                className={`input focus:ring-brand/30 ${
-                  errors.correo ? "border-red-300 focus:ring-red-300" : ""
-                }`}
-                value={correo}
-                onChange={(e) => setCorreo(e.target.value)}
-                placeholder="tu@correo.cl"
-              />
-            </Field>
-
-            <Field label="Contraseña" error={errors.password}>
-              <input
-                type="password"
-                className={`input focus:ring-brand/30 ${
-                  errors.password ? "border-red-300 focus:ring-red-300" : ""
-                }`}
-                value={password}
-                onChange={(e) => setPassword(e.target.value)}
-                placeholder="••••••••"
-              />
-            </Field>
-
-            <button className="btn-primary w-full" disabled={loading}>
-              {loading ? "Ingresando..." : "Iniciar sesión"}
-            </button>
-          </form>
-
-          <div className="mt-6 text-center text-sm text-slate-600">
-            ¿No tienes cuenta?{" "}
-            <Link to="/register" className="font-medium text-indigo-600 hover:underline">
-              Crear cuenta
-            </Link>
           </div>
         </div>
       </div>

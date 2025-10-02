@@ -286,7 +286,7 @@ export default function ModUsuarios() {
                   <td className="px-4 py-2">
                     {isAdmin ? (
                       <select
-                        className="input h-10 min-w-[7rem]"
+                        className="input h-8 min-w-[7rem]"
                         value={u.rol_usuario_id}
                         onChange={(e) => update(u.id, { rol_usuario_id: Number(e.target.value) as 1 | 2 | 3 })}
                       >
@@ -304,7 +304,7 @@ export default function ModUsuarios() {
                   {/* Estado */}
                   <td className="px-4 py-2">
                     <select
-                      className="input h-10 min-w-[7rem]"
+                      className="input h-8 min-w-[7rem]"
                       value={u.estado_usuario_id}
                       onChange={(e) => update(u.id, { estado_usuario_id: Number(e.target.value) })}
                       disabled={!canEdit}
@@ -345,8 +345,8 @@ export default function ModUsuarios() {
           {(page - 1) * pageSize + rows.length} de {total}
         </div>
         <div className="flex items-center gap-2">
-        <button
-           className="rounded-md border border-indigo-600 bg-transparent px-3 py-1 text-sm font-semibold text-indigo-600 transition-colors duration-200 hover:bg-indigo-600 hover:text-white disabled:cursor-not-allowed disabled:opacity-50"
+          <button
+            className="btn btn-outline px-3 py-1"
             disabled={page <= 1}
             onClick={() => setPage((p) => Math.max(1, p - 1))}
           >
@@ -354,7 +354,7 @@ export default function ModUsuarios() {
           </button>
           <span className="text-slate-600">Página {page} / {totalPages}</span>
           <button
-            className="rounded-md border border-indigo-600 bg-transparent px-3 py-1 text-sm font-semibold text-indigo-600 transition-colors duration-200 hover:bg-indigo-600 hover:text-white disabled:cursor-not-allowed disabled:opacity-50"
+            className="btn btn-outline px-3 py-1"
             disabled={page >= totalPages}
             onClick={() => setPage((p) => Math.min(totalPages, p + 1))}
           >

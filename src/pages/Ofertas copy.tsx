@@ -6,8 +6,7 @@ export default function Ofertas() {
       price: "29.990",
       highlight: false,
       color: "from-sky-50 to-white",
-      // 1. Botón centrado y con efecto hover (se rellena de azul)
-      ctaStyle: "btn-outline flex justify-center transition-colors hover:bg-indigo-600 hover:text-white",
+      ctaStyle: "btn-outline",
     },
     {
       name: "Medio",
@@ -15,9 +14,8 @@ export default function Ofertas() {
       price: "59.990",
       highlight: true,
       color: "from-blue-50 to-white",
-      // 2. Efecto hover ELIMINADO del botón recomendado. Ya estaba centrado por 'inline-flex justify-center'.
       ctaStyle:
-        "w-full inline-flex items-center justify-center rounded-xl bg-gradient-to-r from-indigo-600 to-blue-600 px-4 py-2 text-sm font-semibold text-white shadow",
+        "w-full inline-flex items-center justify-center rounded-xl bg-gradient-to-r from-indigo-600 to-blue-600 px-4 py-2 text-sm font-semibold text-white shadow hover:from-indigo-700 hover:to-blue-700",
     },
     {
       name: "Grande",
@@ -25,8 +23,7 @@ export default function Ofertas() {
       price: "119.990",
       highlight: false,
       color: "from-indigo-50 to-white",
-      // 1. Botón centrado y con efecto hover (se rellena de azul)
-      ctaStyle: "btn-outline flex justify-center transition-colors hover:bg-indigo-600 hover:text-white",
+      ctaStyle: "btn-outline",
     },
   ];
 
@@ -53,12 +50,11 @@ export default function Ofertas() {
             <h1 className="text-4xl font-extrabold tracking-tight text-slate-900">
               Planes para tu comunidad
             </h1>
-              {/* DESPUÉS */}
-              <p className="mt-3 text-lg text-slate-700">
-                <span className="font-bold text-slate-900">Elige el plan ideal. Todos incluyen autenticación por padrón,
-                publicaciones internas, ofertas de intercambio y panel para
-                moderadores. Precios en CLP (+IVA).</span>
-              </p>
+            <p className="mt-3 text-lg text-slate-700">
+              Elige el plan ideal. Todos incluyen autenticación por padrón,
+              publicaciones internas, ofertas de intercambio y panel para
+              moderadores. Precios en CLP <span className="text-slate-500">(+IVA)</span>.
+            </p>
           </div>
 
           {/* TARJETAS */}
@@ -75,17 +71,17 @@ export default function Ofertas() {
                 <div className="flex items-start justify-between">
                   <div>
                     <h3 className="text-2xl font-bold">{p.name}</h3>
+                    {/* usuarios más grande y notorio */}
                     <p className="mt-1 text-[15px] text-slate-700">
-                      {/* 3. Estilo de la leyenda de usuarios modificado */}
-                      <span className="inline-flex items-center rounded-full bg-indigo-600 px-3 py-1 text-sm font-medium text-white">
+                      <span className="inline-flex items-center rounded-full bg-slate-900/5 px-3 py-1 text-sm font-medium">
                         {p.users}
                       </span>
                     </p>
                   </div>
                   {p.highlight && (
-                      <span className="text-xs rounded-full bg-indigo-600 text-white px-2 py-0.5 font-semibold">
-                          Recomendado
-                      </span> 
+                    <span className="text-xs rounded-full bg-blue-50 border border-blue-200 text-blue-700 px-2 py-0.5">
+                      Recomendado
+                    </span>
                   )}
                 </div>
 
@@ -117,8 +113,8 @@ export default function Ofertas() {
               </div>
             ))}
           </div>
-          
-          {/* ...El resto del código permanece igual... */}
+
+          {/* FRANJA COMPARATIVA */}
           <div className="mt-12 rounded-2xl bg-white/80 backdrop-blur border border-slate-200 p-6">
             <h2 className="text-lg font-semibold">Comparativa rápida</h2>
             <div className="mt-4 grid gap-4 sm:grid-cols-3">
@@ -139,6 +135,7 @@ export default function Ofertas() {
             </div>
           </div>
 
+          {/* ADD-ONS */}
           <div className="mt-12 rounded-2xl border border-slate-200 bg-white/90 backdrop-blur p-6">
             <h2 className="text-lg font-semibold">Add-ons opcionales</h2>
             <div className="mt-4 grid gap-4 md:grid-cols-3">
@@ -163,6 +160,7 @@ export default function Ofertas() {
             </p>
           </div>
 
+          {/* FAQ */}
           <div className="mt-12 grid gap-6 md:grid-cols-2">
             <div className="rounded-2xl border border-slate-200 bg-white p-6">
               <h3 className="font-semibold">¿Cómo se cuentan los usuarios?</h3>
@@ -178,7 +176,8 @@ export default function Ofertas() {
               </p>
             </div>
           </div>
-          
+
+          {/* CTA FINAL */}
           <div className="mt-12 rounded-2xl border border-indigo-200 bg-gradient-to-r from-indigo-50 to-blue-50 p-6">
             <div className="flex flex-col items-start gap-4 md:flex-row md:items-center md:justify-between">
               <div>
