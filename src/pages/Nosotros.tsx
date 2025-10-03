@@ -8,35 +8,10 @@ export default function Nosotros() {
     text: string;
     icon: string;
   }) => (
-    <div className="rounded-2xl border border-slate-200 bg-white p-6">
+    <div className="rounded-2xl border border-slate-200 bg-white p-6 transition-all duration-300 hover:-translate-y-2 hover:shadow-xl">
       <div className="text-2xl">{icon}</div>
       <h3 className="mt-3 text-lg font-semibold">{title}</h3>
       <p className="mt-2 text-slate-600 text-sm">{text}</p>
-    </div>
-  );
-
-  const Stat = ({ kpi, label }: { kpi: string; label: string }) => (
-    <div className="rounded-2xl border border-slate-200 bg-white p-5 text-center">
-      <div className="text-3xl font-extrabold tracking-tight">{kpi}</div>
-      <div className="mt-1 text-slate-600 text-sm">{label}</div>
-    </div>
-  );
-
-  const Step = ({
-    n,
-    title,
-    text,
-  }: {
-    n: number;
-    title: string;
-    text: string;
-  }) => (
-    <div className="relative rounded-2xl border border-slate-200 bg-white p-6">
-      <div className="absolute -top-3 -left-3 rounded-full bg-indigo-600 px-3 py-1 text-xs font-semibold text-white shadow">
-        Paso {n}
-      </div>
-      <h4 className="text-base font-semibold">{title}</h4>
-      <p className="mt-2 text-sm text-slate-600">{text}</p>
     </div>
   );
 
@@ -44,7 +19,13 @@ export default function Nosotros() {
     <main>
       {/* HERO */}
       <section className="relative overflow-hidden">
-        <div className="absolute inset-0 -z-10 bg-gradient-to-b from-sky-50 to-white" aria-hidden />
+        <div 
+          className="absolute inset-0 -z-10 bg-cover bg-center" 
+          style={{ backgroundImage: "url('/edificio.jpg')" }} 
+          aria-hidden 
+        />
+        <div className="absolute inset-0 -z-10 bg-white/70" aria-hidden />
+
         <div className="mx-auto max-w-7xl px-4 py-16 grid gap-10 md:grid-cols-2 items-center">
           <div>
             <h1 className="text-4xl font-extrabold tracking-tight text-slate-900">
@@ -58,28 +39,29 @@ export default function Nosotros() {
               diseñada para vecinos, administraciones y comités.
             </p>
 
-            <div className="mt-6 grid gap-3 text-sm">
-              <div className="rounded-xl border border-slate-200 bg-white p-4">
+            <div className="mt-6 grid max-w-lg gap-3 text-sm">
+              <div className="rounded-xl border border-slate-200 bg-white p-4 text-center transition-all duration-300 hover:-translate-y-2 hover:shadow-xl">
                 🔒 Accesos por padrón y roles (Admin / Moderador / Residente).
               </div>
-              <div className="rounded-xl border border-slate-200 bg-white p-4">
+              <div className="rounded-xl border border-slate-200 bg-white p-4 text-center transition-all duration-300 hover:-translate-y-2 hover:shadow-xl">
                 🔄 Publicaciones internas, ofertas y negociación por comunidad.
               </div>
-              <div className="rounded-xl border border-slate-200 bg-white p-4">
+              <div className="rounded-xl border border-slate-200 bg-white p-4 text-center transition-all duration-300 hover:-translate-y-2 hover:shadow-xl">
                 🧭 Herramientas de moderación y reportes para la administración.
               </div>
             </div>
 
-            <div className="mt-8 flex flex-wrap gap-3">
+            {/* --- CAMBIOS DE TAMAÑO Y POSICIÓN AQUÍ --- */}
+            <div className="mt-8 grid grid-cols-2 max-w-lg gap-3 mX-auto mr-12">
               <a
                 href="/ofertas"
-                className="inline-flex items-center rounded-xl bg-indigo-600 px-5 py-3 text-sm font-semibold text-white shadow hover:bg-indigo-700"
+                className="inline-flex items-center justify-center rounded-xl border border-indigo-600 bg-white px-4 py-2 text-sm font-semibold text-indigo-600 shadow-sm transition-colors duration-200 hover:bg-indigo-600 hover:text-white"
               >
                 Ver planes
               </a>
               <a
                 href="/contacto"
-                className="inline-flex items-center rounded-xl border border-slate-300 bg-white px-5 py-3 text-sm font-semibold text-slate-700 hover:bg-slate-50"
+                className="inline-flex items-center justify-center rounded-xl border border-indigo-600 bg-white px-4 py-2 text-sm font-semibold text-indigo-600 shadow-sm transition-colors duration-200 hover:bg-indigo-600 hover:text-white"
               >
                 Hablar con nosotros
               </a>
@@ -99,131 +81,25 @@ export default function Nosotros() {
         </div>
       </section>
 
-      {/* MÉTRICAS */}
-      <section className="mx-auto max-w-7xl px-4 pb-4">
-        <div className="grid gap-4 sm:grid-cols-3">
-          <Stat kpi="100% interno" label="Intercambios solo entre vecinos" />
-          <Stat kpi="Roles & Padrón" label="Acceso seguro por comunidad" />
-          <Stat kpi="Soporte hábil" label="Acompañamiento por email" />
-        </div>
-      </section>
-
       {/* VALORES */}
-      <section className="mx-auto max-w-7xl px-4 py-12">
+      <section className="mx-auto max-w-7xl px-4 py-10">
         <h2 className="text-xl font-semibold">Nuestros valores</h2>
-        <div className="mt-6 grid gap-6 md:grid-cols-3">
+        <div className="mt-2 grid gap-6 md:grid-cols-3">
           <Value
-            icon="🤝"
-            title="Confianza"
-            text="Identidad validada por padrón y reglas claras para una comunidad segura."
+            icon=""
+            title="Confianza 🤝"
+            text="Generamos un entorno exclusivo y seguro. Verificamos a cada miembro con el padrón oficial para asegurar que todas las interacciones sean únicamente entre vecinos, promoviendo la confianza y el respeto en cada intercambio."
           />
           <Value
-            icon="🌱"
-            title="Reutilización"
-            text="Impulsamos la economía circular dentro del edificio o condominio."
+            icon=""
+            title="Reutilización 🌱"
+            text="Nuestro compromiso es con la sostenibilidad. Impulsamos una economía circular promoviendo intercambios que aprovechan los recursos de manera responsable. Cada trueque ayuda a reducir el desperdicio y genera un impacto positivo real en tu comunidad y en el medio ambiente."
           />
           <Value
-            icon="⚡"
-            title="Simpleza"
-            text="Publica, negocia y acuerda—todo en un flujo pensado para personas ocupadas."
+            icon=""
+            title="Simpleza ⚡"
+            text="La eficiencia es el corazón de nuestra plataforma. Desde una interfaz limpia hasta notificaciones inteligentes, todo está diseñado para una interacción ágil y directa. Nos comprometemos a ofrecer un proceso que respeta tu tiempo y te conecta con tu comunidad sin fricciones."
           />
-        </div>
-      </section>
-
-      {/* CÓMO TRABAJAMOS / TIMELINE */}
-      <section className="relative overflow-hidden">
-        <div
-          className="absolute inset-0 -z-10 bg-gradient-to-b from-white to-indigo-50"
-          aria-hidden
-        />
-        <div className="mx-auto max-w-7xl px-4 py-12">
-          <h2 className="text-xl font-semibold">Cómo trabajamos con tu comunidad</h2>
-          <div className="mt-6 grid gap-6 md:grid-cols-4">
-            <Step
-              n={1}
-              title="Onboarding"
-              text="Activamos tu comunidad, configuramos roles e importamos el padrón."
-            />
-            <Step
-              n={2}
-              title="Lanzamiento"
-              text="Comunicamos a los residentes y entregamos el código de comunidad."
-            />
-            <Step
-              n={3}
-              title="Adopción"
-              text="Publicaciones internas, ofertas y negociación guiada por el moderador."
-            />
-            <Step
-              n={4}
-              title="Mejora continua"
-              text="Reportes, buenas prácticas y soporte para mantener el ecosistema vivo."
-            />
-          </div>
-        </div>
-      </section>
-
-      {/* EQUIPO / SOPORTE */}
-      <section className="mx-auto max-w-7xl px-4 py-12">
-        <div className="grid gap-8 md:grid-cols-2 items-center">
-          <div className="rounded-2xl overflow-hidden shadow-xl border border-slate-200">
-            <img
-              src="/about-team.jpg"
-              alt="Equipo de soporte"
-              className="w-full h-[380px] object-cover"
-            />
-          </div>
-          <div>
-            <h3 className="text-2xl font-bold tracking-tight">
-              Soporte cercano y enfoque en comunidades
-            </h3>
-            <p className="mt-3 text-slate-700">
-              Nuestro equipo acompaña a administradores y moderadores en todo el
-              proceso. Configuramos el padrón, resolvemos dudas y compartimos
-              buenas prácticas para que los vecinos adopten la plataforma.
-            </p>
-            <ul className="mt-4 space-y-2 text-sm text-slate-700">
-              <li>✅ Setup inicial opcional</li>
-              <li>✅ Guías de comunicación para residentes</li>
-              <li>✅ Reportes y recomendaciones trimestrales</li>
-            </ul>
-            <a
-              href="/contacto"
-              className="mt-6 inline-flex items-center rounded-xl bg-indigo-600 px-5 py-3 text-sm font-semibold text-white shadow hover:bg-indigo-700"
-            >
-              Hablemos
-            </a>
-          </div>
-        </div>
-      </section>
-
-      {/* CTA FINAL */}
-      <section className="mx-auto max-w-7xl px-4 pb-16">
-        <div className="rounded-2xl border border-indigo-200 bg-gradient-to-r from-indigo-50 to-blue-50 p-6">
-          <div className="flex flex-col items-start gap-4 md:flex-row md:items-center md:justify-between">
-            <div>
-              <h3 className="text-xl font-semibold text-slate-900">
-                ¿Listos para potenciar tu comunidad?
-              </h3>
-              <p className="text-slate-600">
-                Comienza con un plan y te ayudamos con el onboarding.
-              </p>
-            </div>
-            <div className="flex gap-3">
-              <a
-                href="/ofertas"
-                className="inline-flex items-center rounded-xl border border-slate-300 bg-white px-5 py-3 text-sm font-semibold text-slate-700 hover:bg-slate-50"
-              >
-                Ver planes
-              </a>
-              <a
-                href="/contacto"
-                className="inline-flex items-center rounded-xl bg-indigo-600 px-5 py-3 text-sm font-semibold text-white shadow hover:bg-indigo-700"
-              >
-                Contacto
-              </a>
-            </div>
-          </div>
         </div>
       </section>
     </main>

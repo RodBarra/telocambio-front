@@ -25,7 +25,7 @@ export default function ModUsuarios() {
 
   // filtros / estado UI
   const [q, setQ] = useState("");
-  const [rol, setRol] = useState<"" | 1 | 2 | 3>(""); // Admin puede usarlo, Mod lo ignora/oculta
+  const [rol, setRol] = useState<"" | 1 | 2 | 3>("");
   const [estado, setEstado] = useState<"" | number>("");
   const [comunidadId, setComunidadId] = useState<number | "">("");
   const [sort, setSort] = useState<Sort>({ key: "id", dir: "desc" });
@@ -101,7 +101,6 @@ export default function ModUsuarios() {
     const canModEdit = isMod && user?.comunidad_id === u.comunidad_id && u.rol_usuario_id !== 1;
     const canAdminEdit = isAdmin;
     const allowed = canAdminEdit || canModEdit;
-
     if (!allowed) {
       alert("No autorizado para eliminar este usuario.");
       return;
@@ -109,22 +108,10 @@ export default function ModUsuarios() {
     openDelete(u);
   };
 
-  const confirmDelete = async () => {
-    if (!toDelete) return;
-    try {
-      await UsuariosApi.delete(toDelete.id);
-      closeDelete();
-      await load();
-    } catch (e: any) {
-      setErr(e?.response?.data?.detail || "No se pudo eliminar el usuario.");
-      closeDelete();
-    }
-  };
-
   // columnas
   const headers = [
     { key: "id", label: "ID", cls: "w-16 lg:w-auto" },
-    { key: "correo", label: "Correo", cls: "min-w-[16rem] lg:w-auto" },
+    { key: "correo", label: "Usuario", cls: "min-w-[16rem] lg:w-auto" },
     { key: "nombre", label: "Nombre", cls: "min-w-[12rem] lg:w-auto" },
     { key: "apellidos", label: "Apellidos", cls: "min-w-[14rem] lg:w-auto" },
     { key: "telefono", label: "Teléfono", nosort: true, cls: "w-32 lg:w-auto hidden lg:table-cell" },
@@ -138,6 +125,13 @@ export default function ModUsuarios() {
 
   const roleLabel = (r: 1 | 2 | 3) => (r === 1 ? "Admin" : r === 2 ? "Moderador" : "Residente");
 
+  // —— Rail sólido por estado (sin degradado/stripe) ——
+  const rowAccent = (estadoId?: number | null) => {
+    return {
+      rail: estadoId === 2 ? "bg-rose-500" : "bg-emerald-500",
+    };
+  };
+
   return (
     <div className="max-w-7xl mx-auto px-4 py-8">
       <div className="flex items-center justify-between mb-4">
@@ -145,78 +139,82 @@ export default function ModUsuarios() {
         {loading && <span className="text-sm text-slate-500">Cargando…</span>}
       </div>
 
-      {/* filtros */}
-      <div className="card p-4 mb-4 grid gap-3 md:grid-cols-5">
-        <div className="md:col-span-2">
-          <input
-            className="input"
-            placeholder="Buscar por nombre o correo…"
-            value={q}
-            onChange={(e) => {
-              setQ(e.target.value);
-              setPage(1);
-            }}
-          />
-        </div>
-
-        {isAdmin ? (
-          <div>
-            <select
-              className="input"
-              value={rol as any}
+      {/* Filtros (header azul) */}
+      <div className="mb-4 rounded-2xl border border-slate-800/50 shadow-sm bg-[linear-gradient(135deg,#273a9b,#111a34)] text-white">
+        <div className="grid gap-3 md:grid-cols-5 p-4">
+          <label className="text-xs uppercase tracking-wider text-white/90">
+            Buscar
+            <input
+              className="input mt-1 bg-white text-slate-900 placeholder-slate-400 shadow-sm"
+              placeholder="Nombre o correo…"
+              value={q}
               onChange={(e) => {
-                setRol((e.target.value ? Number(e.target.value) : "") as any);
+                setQ(e.target.value);
+                setPage(1);
+              }}
+            />
+          </label>
+
+          <label className="text-xs uppercase tracking-wider text-white/90">
+            Rol
+            {isAdmin ? (
+              <select
+                className="input mt-1 bg-white text-slate-900"
+                value={rol as any}
+                onChange={(e) => {
+                  setRol((e.target.value ? Number(e.target.value) : "") as any);
+                  setPage(1);
+                }}
+              >
+                <option value="">(todos)</option>
+                <option value={3}>Residente</option>
+                <option value={2}>Moderador</option>
+                <option value={1}>Admin</option>
+              </select>
+            ) : (
+              <select className="input mt-1 bg-white text-slate-900" value={3} disabled>
+                <option value={3}>Residente</option>
+              </select>
+            )}
+          </label>
+
+          <label className="text-xs uppercase tracking-wider text-white/90">
+            Estado
+            <select
+              className="input mt-1 bg-white text-slate-900"
+              value={estado as any}
+              onChange={(e) => {
+                setEstado((e.target.value ? Number(e.target.value) : "") as any);
                 setPage(1);
               }}
             >
-              <option value="">Rol (todos)</option>
-              <option value={3}>Residente</option>
-              <option value={2}>Moderador</option>
-              <option value={1}>Admin</option>
+              <option value="">(todos)</option>
+              <option value={1}>Activo</option>
+              <option value={2}>Suspendido</option>
             </select>
-          </div>
-        ) : (
-          <div>
-            <select className="input" value={3} disabled>
-              <option value={3}>Residente</option>
-            </select>
-          </div>
-        )}
+          </label>
 
-        <div>
-          <select
-            className="input"
-            value={estado as any}
-            onChange={(e) => {
-              setEstado((e.target.value ? Number(e.target.value) : "") as any);
-              setPage(1);
-            }}
-          >
-            <option value="">Estado (todos)</option>
-            <option value={1}>Activo</option>
-            <option value={2}>Suspendido</option>
-          </select>
+          {isAdmin && (
+            <label className="text-xs uppercase tracking-wider text-white/90 md:col-span-2">
+              Comunidad
+              <select
+                className="input mt-1 bg-white text-slate-900"
+                value={comunidadId as any}
+                onChange={(e) => {
+                  setComunidadId(e.target.value ? Number(e.target.value) : "");
+                  setPage(1);
+                }}
+              >
+                <option value="">(todas)</option>
+                {comunidades.map((c) => (
+                  <option key={c.id} value={c.id}>
+                    {c.nombre} — {c.codigo}
+                  </option>
+                ))}
+              </select>
+            </label>
+          )}
         </div>
-
-        {isAdmin && (
-          <div>
-            <select
-              className="input"
-              value={comunidadId as any}
-              onChange={(e) => {
-                setComunidadId(e.target.value ? Number(e.target.value) : "");
-                setPage(1);
-              }}
-            >
-              <option value="">Comunidad (todas)</option>
-              {comunidades.map((c) => (
-                <option key={c.id} value={c.id}>
-                  {c.nombre} — {c.codigo}
-                </option>
-              ))}
-            </select>
-          </div>
-        )}
       </div>
 
       {err && (
@@ -225,20 +223,31 @@ export default function ModUsuarios() {
         </div>
       )}
 
-      {/* tabla */}
-      <div className="card overflow-x-auto">
+      {/* Tabla */}
+      <div className="overflow-x-auto rounded-2xl border border-slate-200 bg-white shadow-sm">
         <table className="min-w-[1024px] w-full text-sm table-fixed lg:table-auto">
           <thead>
-            <tr className="bg-slate-50 text-left">
-              {headers.map((h) => (
-                <th key={h.key} className={`px-4 py-2 ${h.cls || ""}`}>
+            <tr className="text-left text-white bg-[linear-gradient(180deg,#273a9b,#1b2554)]">
+              {headers.map((h, i) => (
+                <th
+                  key={h.key}
+                  className={[
+                    "px-4 py-3 font-semibold",
+                    i === 0 ? "rounded-tl-2xl" : "",
+                    i === headers.length - 1 ? "rounded-tr-2xl" : "",
+                    h.cls || "",
+                  ].join(" ")}
+                >
                   {"nosort" in h && h.nosort ? (
                     <span>{h.label}</span>
                   ) : h.key !== "acciones" ? (
-                    <button className="inline-flex items-center gap-1 hover:underline" onClick={() => onSort(h.key)}>
+                    <button
+                      className="inline-flex items-center gap-1 hover:opacity-90"
+                      onClick={() => onSort(h.key)}
+                    >
                       {h.label}
                       {sort.key === h.key && (
-                        <span className="text-slate-400">{sort.dir === "asc" ? "▲" : "▼"}</span>
+                        <span className="text-white/70">{sort.dir === "asc" ? "▲" : "▼"}</span>
                       )}
                     </button>
                   ) : (
@@ -248,42 +257,67 @@ export default function ModUsuarios() {
               ))}
             </tr>
           </thead>
+
           <tbody>
             {rows.map((u) => {
-              const canModEdit =
-                isMod && user?.comunidad_id === u.comunidad_id && u.rol_usuario_id !== 1;
+              const canModEdit = isMod && user?.comunidad_id === u.comunidad_id && u.rol_usuario_id !== 1;
               const canAdminEdit = isAdmin;
               const canEdit = canAdminEdit || canModEdit;
 
+              const accent = rowAccent(u.estado_usuario_id);
+
               return (
-                <tr key={u.id} className="border-t align-top">
-                  <td className="px-4 py-2">{u.id}</td>
-                  <td className="px-4 py-2">
-                    <span className="block truncate md:truncate lg:whitespace-normal lg:break-words lg:overflow-visible" title={u.correo}>
+                <tr
+                  key={u.id}
+                  className="border-t align-top hover:bg-slate-50/40 transition-colors"
+                >
+                  {/* Rail sólido alineado al borde izquierdo */}
+                  <td className="px-4 py-3 whitespace-nowrap relative">
+                    <span className={`absolute left-0 top-0 bottom-0 w-2 ${accent.rail}`} />
+                    {u.id}
+                  </td>
+
+                  {/* Usuario: evita superposición en móvil con truncado + word-break */}
+                  <td className="px-4 py-3">
+                    <div className="font-medium text-slate-900 truncate lg:whitespace-normal lg:break-words">
                       {u.correo}
+                    </div>
+                  </td>
+
+                  <td className="px-4 py-3">
+                    <span
+                      className="block truncate lg:whitespace-normal lg:break-words"
+                      title={u.nombre || ""}
+                    >
+                      {u.nombre || "-"}
                     </span>
                   </td>
-                  <td className="px-4 py-2">
-                    <span className="block truncate md:truncate lg:whitespace-normal lg:break-words lg:overflow-visible" title={u.nombre || ""}>
-                      {u.nombre}
+
+                  <td className="px-4 py-3">
+                    <span
+                      className="block truncate lg:whitespace-normal lg:break-words"
+                      title={u.apellidos || ""}
+                    >
+                      {u.apellidos || "-"}
                     </span>
                   </td>
-                  <td className="px-4 py-2">
-                    <span className="block truncate md:truncate lg:whitespace-normal lg:break-words lg:overflow-visible" title={u.apellidos || ""}>
-                      {u.apellidos}
-                    </span>
-                  </td>
-                  <td className="px-4 py-2 hidden lg:table-cell">{u.telefono || "-"}</td>
-                  <td className="px-4 py-2 hidden md:table-cell">
-                    <span className="block truncate md:truncate lg:whitespace-normal lg:break-words lg:overflow-visible" title={u.comunidad_nombre || String(u.comunidad_id ?? "-")}>
+
+                  <td className="px-4 py-3 hidden lg:table-cell">{u.telefono || "-"}</td>
+
+                  <td className="px-4 py-3 hidden md:table-cell">
+                    <span
+                      className="block truncate lg:whitespace-normal lg:break-words"
+                      title={u.comunidad_nombre || String(u.comunidad_id ?? "-")}
+                    >
                       {u.comunidad_nombre || (u.comunidad_id ?? "-")}
                     </span>
                   </td>
-                  <td className="px-4 py-2 hidden xl:table-cell whitespace-nowrap">{fmtDate(u.registrado_en)}</td>
-                  <td className="px-4 py-2 hidden xl:table-cell whitespace-nowrap">{fmtDate(u.actualizado_en)}</td>
 
-                  {/* ROL */}
-                  <td className="px-4 py-2">
+                  <td className="px-4 py-3 hidden xl:table-cell whitespace-nowrap">{fmtDate(u.registrado_en)}</td>
+                  <td className="px-4 py-3 hidden xl:table-cell whitespace-nowrap">{fmtDate(u.actualizado_en)}</td>
+
+                  {/* Rol */}
+                  <td className="px-4 py-3">
                     {isAdmin ? (
                       <select
                         className="input h-10 min-w-[7rem]"
@@ -302,7 +336,7 @@ export default function ModUsuarios() {
                   </td>
 
                   {/* Estado */}
-                  <td className="px-4 py-2">
+                  <td className="px-4 py-3">
                     <select
                       className="input h-10 min-w-[7rem]"
                       value={u.estado_usuario_id}
@@ -314,7 +348,7 @@ export default function ModUsuarios() {
                     </select>
                   </td>
 
-                  <td className="px-4 py-2 text-right">
+                  <td className="px-4 py-3 text-right">
                     <button
                       className="btn btn-outline px-2 py-1"
                       onClick={() => remove(u)}
@@ -327,6 +361,7 @@ export default function ModUsuarios() {
                 </tr>
               );
             })}
+
             {rows.length === 0 && (
               <tr>
                 <td colSpan={headers.length} className="px-4 py-10 text-center text-slate-500">
@@ -345,8 +380,8 @@ export default function ModUsuarios() {
           {(page - 1) * pageSize + rows.length} de {total}
         </div>
         <div className="flex items-center gap-2">
-        <button
-           className="rounded-md border border-indigo-600 bg-transparent px-3 py-1 text-sm font-semibold text-indigo-600 transition-colors duration-200 hover:bg-indigo-600 hover:text-white disabled:cursor-not-allowed disabled:opacity-50"
+          <button
+            className="rounded-md border border-indigo-600 bg-transparent px-3 py-1 text-sm font-semibold text-indigo-600 transition-colors duration-200 hover:bg-indigo-600 hover:text-white disabled:cursor-not-allowed disabled:opacity-50"
             disabled={page <= 1}
             onClick={() => setPage((p) => Math.max(1, p - 1))}
           >
@@ -375,7 +410,17 @@ export default function ModUsuarios() {
         }
         confirmText="Eliminar usuario"
         cancelText="Cancelar"
-        onConfirm={confirmDelete}
+        onConfirm={async () => {
+          if (!toDelete) return;
+          try {
+            await UsuariosApi.delete(toDelete.id);
+            closeDelete();
+            await load();
+          } catch (e: any) {
+            setErr(e?.response?.data?.detail || "No se pudo eliminar el usuario.");
+            closeDelete();
+          }
+        }}
         onCancel={closeDelete}
       />
     </div>
