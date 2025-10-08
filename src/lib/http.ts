@@ -1,11 +1,20 @@
 // src/lib/http.ts
-import axios, { type AxiosError, type AxiosRequestConfig, type AxiosResponse } from "axios";
+import axios, {
+  type AxiosError,
+  type AxiosRequestConfig,
+  type AxiosResponse,
+} from "axios";
 
 const baseURL = import.meta.env.VITE_API_URL || "http://127.0.0.1:8000";
 
+/**
+ * === MODO LEGADO (lo que ya te funcionaba) ===
+ * Exportamos un axios instance llamado `http`, igual que antes.
+ * Todo lo viejo (comunidades/usuarios/padrón/login) sigue funcionando.
+ */
 export const http = axios.create({ baseURL });
 
-// ---- Helpers de refresh ----
+// ---- Helpers de refresh (idéntico a tu versión estable) ----
 let isRefreshing = false;
 let refreshQueue: Array<(token: string | null) => void> = [];
 
@@ -21,6 +30,7 @@ async function refreshAccessToken(): Promise<string | null> {
   const refresh = localStorage.getItem("tk_refresh");
   if (!refresh) return null;
   try {
+    // Mantengo la ruta SIN slash final, como tenías cuando todo funcionaba
     const resp = await axios.post<{ access: string }>(`${baseURL}/auth/refresh`, { refresh });
     const newAccess = resp.data?.access;
     if (newAccess) {
@@ -33,7 +43,7 @@ async function refreshAccessToken(): Promise<string | null> {
   }
 }
 
-// ---- Request: agrega Authorization salvo endpoints públicos ----
+// ---- Request: agrega Authorization salvo endpoints públicos (igual que antes) ----
 http.interceptors.request.use((config) => {
   const url = config.url || "";
   const isPublicAuth = /^\/auth\/(login|register|verify-access|refresh)/.test(url);
@@ -47,7 +57,7 @@ http.interceptors.request.use((config) => {
   return config;
 });
 
-// ---- Response: intenta refresh ante 401 / token inválido ----
+// ---- Response: intenta refresh ante 401 / token inválido (igual que antes) ----
 http.interceptors.response.use(
   (r: AxiosResponse) => r,
   async (error: AxiosError<any>) => {
@@ -93,3 +103,30 @@ http.interceptors.response.use(
     return Promise.reject(error);
   }
 );
+
+/**
+ * === MODO NUEVO (para servicios estilo “fetch”) ===
+ * `request<T>(url, { method, body })` usa el instance anterior internamente,
+ * pero te devuelve `data` directo (como ya vienes haciendo en publicaciones).
+ * - NO rompe nada viejo porque `http` sigue siendo el axios instance.
+ * - En módulos nuevos, importa y usa `request` en vez de `http`.
+ */
+export async function request<T = any>(
+  url: string,
+  options: { method?: string; body?: any } = {}
+): Promise<T> {
+  const method = (options.method || "GET").toUpperCase();
+  const data =
+    options.body && typeof options.body === "string"
+      ? JSON.parse(options.body)
+      : options.body ?? undefined;
+
+  const res = await http.request<T>({ url, method, data });
+  return res.data as T;
+}
+
+// (Opcional) helper para setear o limpiar Authorization globalmente si lo necesitas
+export function setAuthHeader(token: string | null) {
+  if (token) http.defaults.headers.common.Authorization = `Bearer ${token}`;
+  else delete http.defaults.headers.common.Authorization;
+}

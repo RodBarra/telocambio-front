@@ -1,4 +1,3 @@
-// src/components/Navbar.tsx
 import { Link, NavLink, useNavigate } from "react-router-dom";
 import { useAuth } from "../context/AuthContext";
 import { useEffect, useRef, useState } from "react";
@@ -14,6 +13,7 @@ export default function Navbar() {
 
   const isAdmin = user.rol_usuario_id === 1;
   const isMod = user.rol_usuario_id === 2;
+  // const isRes = user.rol_usuario_id === 3; // por si lo usas luego
 
   // Cerrar con click fuera y con ESC
   useEffect(() => {
@@ -72,6 +72,9 @@ export default function Navbar() {
   const NavItemsDesktop = () => (
     <div className="hidden md:flex items-center gap-1">
       <Item to="/dashboard">Inicio</Item>
+
+      {/* Marketplace para todos los roles autenticados */}
+      <Item to="/publicaciones">Publicaciones</Item>
 
       {(isMod || isAdmin) && <Item to="/mod/usuarios">Usuarios</Item>}
       {isMod && <Item to="/mod/padron">Padrón</Item>}
@@ -169,6 +172,19 @@ export default function Navbar() {
               }
             >
               Inicio
+            </NavLink>
+
+            {/* Marketplace (mobile) */}
+            <NavLink
+              to="/publicaciones"
+              onClick={() => setOpen(false)}
+              className={({ isActive }) =>
+                `block rounded-lg px-3 py-2 ${
+                  isActive ? "bg-slate-100 text-slate-900" : "text-slate-700 hover:bg-slate-50"
+                }`
+              }
+            >
+              Publicaciones
             </NavLink>
 
             {(isMod || isAdmin) && (
