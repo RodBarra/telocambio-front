@@ -4,7 +4,7 @@
 export type JwtUser = {
   id: number;
   correo: string;
-  rol_usuario_id: 1 | 2 | 3;  // 1=Admin, 2=Moderador, 3=Residente
+  rol_usuario_id: 1 | 2 | 3; // 1=Admin, 2=Moderador, 3=Residente
   comunidad_id: number | null;
   nombre?: string;
   apellidos?: string;
@@ -65,7 +65,6 @@ export type UsuarioLite = {
 export type Categoria = {
   id: number;
   nombre: string;
-  padre_id?: number | null;
 };
 
 export type ImagenPublicacion = {
@@ -78,16 +77,20 @@ export type ImagenPublicacion = {
 export type Publicacion = {
   id: number;
   comunidad_id: number;
-  propietaria_usuario_id: number;          // alias que devuelve el backend
+  propietario_usuario_id: number;             // ✅ nombre correcto
   categoria_id: number;
-  tipo_publicacion_id: number;             // 1=Servicio, 2=Producto, 3=Regalo
+  tipo_publicacion_id: 1 | 2 | 3;             // 1=Servicio, 2=Producto, 3=Regalo
   titulo: string;
-  descripcion?: string;
-  condicion_publicacion_id: number;        // alias del backend para condicion_producto_id
-  estado_publicacion_id: number;           // 1=Activa, 2=Oculta, 3=Realizada
+  descripcion?: string | null;
+  condicion_publicacion_id: 1 | 2 | 3;        // alias de condicion_producto_id
+  estado_publicacion_id: 1 | 2 | 3;           // 1=Activa, 2=Oculta, 3=Realizada
   creada_en: string;
   actualizada_en: string;
   imagenes?: ImagenPublicacion[];
+
+  // Nuevos campos embebidos por el serializer de detalle:
+  propietario_nombre?: string | null;
+  propietario_apellidos?: string | null;
 };
 
 export type PublicacionListItem = {
@@ -96,7 +99,7 @@ export type PublicacionListItem = {
   categoria_id: number;
   tipo_publicacion_id: number;
   condicion_publicacion_id: number;
-  estado_publicacion_id: number;           // 1=Activa, 2=Oculta, 3=Realizada
+  estado_publicacion_id: number;
   creada_en: string;
   actualizada_en: string;
   primera_imagen?: string | null;

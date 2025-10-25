@@ -151,7 +151,7 @@ export default function Login() {
                   className="font-medium text-slate-400 cursor-not-allowed"
                   aria-disabled="true"
                 >
-                  ¿Olvidó su clave?
+                 {/* --- ¿Olvidó su clave? --- */} 
                 </Link>
               </div>
             </div>

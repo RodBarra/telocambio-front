@@ -19,8 +19,8 @@ import Nosotros from "./pages/Nosotros";
 import ComoFunciona from "./pages/ComoFunciona";
 import Contacto from "./pages/Contacto";
 
-// marketplace (Sprint 2)
-import { PublicacionesList, PublicacionForm } from "./pages/publicaciones";
+// marketplace
+import { PublicacionesList, PublicacionForm, PublicacionDetail } from "./pages/publicaciones";
 
 function PrivateShell({ children }: { children: React.ReactNode }) {
   return (
@@ -66,7 +66,7 @@ export default function App() {
         }
       />
 
-      {/* Marketplace (todos los roles autenticados: Admin/Mod/Residente) */}
+      {/* Marketplace (todos los roles autenticados) */}
       <Route
         path="/publicaciones"
         element={
@@ -83,6 +83,16 @@ export default function App() {
           <ProtectedRoute>
             <PrivateShell>
               <PublicacionForm />
+            </PrivateShell>
+          </ProtectedRoute>
+        }
+      />
+      <Route
+        path="/publicaciones/:id"
+        element={
+          <ProtectedRoute>
+            <PrivateShell>
+              <PublicacionDetail />
             </PrivateShell>
           </ProtectedRoute>
         }

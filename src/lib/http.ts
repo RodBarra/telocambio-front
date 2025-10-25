@@ -1,20 +1,34 @@
 // src/lib/http.ts
-import axios, {
-  type AxiosError,
-  type AxiosRequestConfig,
-  type AxiosResponse,
+import axios from "axios";
+import type {
+  AxiosError,
+  AxiosRequestConfig,
+  AxiosResponse,
+  InternalAxiosRequestConfig,
 } from "axios";
 
-const baseURL = import.meta.env.VITE_API_URL || "http://127.0.0.1:8000";
-
 /**
- * === MODO LEGADO (lo que ya te funcionaba) ===
- * Exportamos un axios instance llamado `http`, igual que antes.
- * Todo lo viejo (comunidades/usuarios/padrón/login) sigue funcionando.
+ * Axios singleton + helper `request<T>`:
+ * - Autenticación por JWT en header Authorization.
+ * - Refresh token ante 401/expirado.
+ * - API “fetch-like” que devuelve `data` directo.
  */
-export const http = axios.create({ baseURL });
 
-// ---- Helpers de refresh (idéntico a tu versión estable) ----
+const baseURL =
+  import.meta.env.VITE_API_URL ||
+  import.meta.env.VITE_API_BASE ||
+  "http://127.0.0.1:8000";
+
+export const http = axios.create({
+  baseURL,
+  timeout: 20000,
+  headers: {
+    // IMPORTANTE: No fijar Content-Type global.
+    "X-Requested-With": "XMLHttpRequest",
+  },
+});
+
+// ---- Refresh orchestration ----
 let isRefreshing = false;
 let refreshQueue: Array<(token: string | null) => void> = [];
 
@@ -30,8 +44,10 @@ async function refreshAccessToken(): Promise<string | null> {
   const refresh = localStorage.getItem("tk_refresh");
   if (!refresh) return null;
   try {
-    // Mantengo la ruta SIN slash final, como tenías cuando todo funcionaba
-    const resp = await axios.post<{ access: string }>(`${baseURL}/auth/refresh`, { refresh });
+    const resp = await axios.post<{ access: string }>(
+      `${baseURL}/auth/refresh`,
+      { refresh }
+    );
     const newAccess = resp.data?.access;
     if (newAccess) {
       localStorage.setItem("tk_access", newAccess);
@@ -43,8 +59,8 @@ async function refreshAccessToken(): Promise<string | null> {
   }
 }
 
-// ---- Request: agrega Authorization salvo endpoints públicos (igual que antes) ----
-http.interceptors.request.use((config) => {
+// ---- Request interceptor: adjunta Authorization salvo endpoints públicos ----
+http.interceptors.request.use((config: InternalAxiosRequestConfig) => {
   const url = config.url || "";
   const isPublicAuth = /^\/auth\/(login|register|verify-access|refresh)/.test(url);
   if (!isPublicAuth) {
@@ -57,25 +73,32 @@ http.interceptors.request.use((config) => {
   return config;
 });
 
-// ---- Response: intenta refresh ante 401 / token inválido (igual que antes) ----
+// ---- Response interceptor: intenta refresh ante 401/token inválido ----
 http.interceptors.response.use(
   (r: AxiosResponse) => r,
   async (error: AxiosError<any>) => {
-    const original = error.config as (AxiosRequestConfig & { _retry?: boolean }) | undefined;
+    const original = error.config as (AxiosRequestConfig & { _retry?: boolean }) | null;
+
     const status = error.response?.status;
-    const msg = (error.response?.data as any)?.detail || (error.response?.data as any)?.message || "";
+    const msg =
+      (error.response?.data as any)?.detail ||
+      (error.response?.data as any)?.message ||
+      "";
 
     const shouldTryRefresh =
       status === 401 || /token/i.test(String(msg)) || /not valid/i.test(String(msg));
 
     if (original && shouldTryRefresh && !original._retry) {
-      original._retry = true;
+      (original as any)._retry = true;
 
       if (isRefreshing) {
         return new Promise((resolve) => {
           enqueue((token) => {
             if (token && original) {
-              original.headers = { ...(original.headers || {}), Authorization: `Bearer ${token}` };
+              (original.headers as any) = {
+                ...(original.headers || {}),
+                Authorization: `Bearer ${token}`,
+              };
               resolve(http(original));
             } else {
               resolve(Promise.reject(error));
@@ -90,10 +113,12 @@ http.interceptors.response.use(
       resolveQueue(newToken);
 
       if (newToken && original) {
-        original.headers = { ...(original.headers || {}), Authorization: `Bearer ${newToken}` };
+        (original.headers as any) = {
+          ...(original.headers || {}),
+          Authorization: `Bearer ${newToken}`,
+        };
         return http(original);
       } else {
-        // limpiar sesión si el refresh también falló
         localStorage.removeItem("tk_access");
         localStorage.removeItem("tk_refresh");
         localStorage.removeItem("tk_user");
@@ -105,27 +130,38 @@ http.interceptors.response.use(
 );
 
 /**
- * === MODO NUEVO (para servicios estilo “fetch”) ===
- * `request<T>(url, { method, body })` usa el instance anterior internamente,
- * pero te devuelve `data` directo (como ya vienes haciendo en publicaciones).
- * - NO rompe nada viejo porque `http` sigue siendo el axios instance.
- * - En módulos nuevos, importa y usa `request` en vez de `http`.
+ * request<T>: API fetch-like sobre el axios instance:
+ * - Detecta FormData vs JSON.
+ * - Para JSON, garantiza Content-Type y deja que Axios serialice.
  */
 export async function request<T = any>(
   url: string,
-  options: { method?: string; body?: any } = {}
+  options: { method?: string; body?: any; headers?: Record<string, string> } = {}
 ): Promise<T> {
   const method = (options.method || "GET").toUpperCase();
-  const data =
-    options.body && typeof options.body === "string"
-      ? JSON.parse(options.body)
-      : options.body ?? undefined;
+  const isFormData =
+    typeof FormData !== "undefined" && options.body instanceof FormData;
 
-  const res = await http.request<T>({ url, method, data });
+  const headers: Record<string, string> = { ...(options.headers || {}) };
+
+  // Si es FormData, NO fijes Content-Type (el browser pondrá boundary).
+  if (isFormData) {
+    delete headers["Content-Type"];
+  } else if (method !== "GET" && method !== "HEAD") {
+    headers["Content-Type"] = headers["Content-Type"] || "application/json";
+  }
+
+  const res = await http.request<T>({
+    url,
+    method,
+    data: options.body, // Axios convierte objetos a JSON automáticamente con Content-Type JSON
+    headers,
+  });
+
   return res.data as T;
 }
 
-// (Opcional) helper para setear o limpiar Authorization globalmente si lo necesitas
+// (Opcional) set global Authorization si necesitas
 export function setAuthHeader(token: string | null) {
   if (token) http.defaults.headers.common.Authorization = `Bearer ${token}`;
   else delete http.defaults.headers.common.Authorization;

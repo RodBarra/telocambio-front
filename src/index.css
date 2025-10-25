@@ -38,3 +38,21 @@ body { @apply bg-slate-50 text-slate-800 antialiased; }
   transition: width .25s ease;
 }
 .nav-link:hover::after { width: 100%; }
+
+/* Skeleton shimmer */
+.skeleton {
+  @apply bg-slate-200/70;
+  position: relative;
+  overflow: hidden;
+}
+.skeleton::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  transform: translateX(-100%);
+  background: linear-gradient(90deg, transparent, rgba(255,255,255,.6), transparent);
+  animation: skeleton-shimmer 1.2s infinite;
+}
+@keyframes skeleton-shimmer {
+  100% { transform: translateX(100%); }
+}

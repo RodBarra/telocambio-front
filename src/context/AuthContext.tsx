@@ -1,3 +1,4 @@
+// src/context/AuthContext.tsx
 import { createContext, useContext, useMemo, useState } from "react";
 import { AuthApi, type LoginResp, type JwtUser } from "../services/auth";
 
@@ -7,7 +8,7 @@ type AuthCtx = {
   login: (correo: string, password: string, codigo?: string) => Promise<void>;
   logout: () => void;
   loading: boolean;
-  booted: boolean; // ya hidratado desde localStorage (sincrónico)
+  booted: boolean;
 };
 
 const Ctx = createContext<AuthCtx>({
@@ -19,10 +20,9 @@ const Ctx = createContext<AuthCtx>({
   booted: false,
 });
 
-// Init SINCRÓNICO desde localStorage para evitar parpadeos/redirect al recargar
 function getInitialAuth() {
   const access = localStorage.getItem("tk_access");
-  const refresh = localStorage.getItem("tk_refresh"); // por si lo usas en otro lado
+  const refresh = localStorage.getItem("tk_refresh");
   const rawUser = localStorage.getItem("tk_user");
   let user: JwtUser | null = null;
   if (rawUser) {
@@ -32,22 +32,16 @@ function getInitialAuth() {
       user = null;
     }
   }
-  return {
-    access: access || null,
-    refresh: refresh || null,
-    user,
-  };
+  return { access: access || null, refresh: refresh || null, user };
 }
 
 export function AuthProvider({ children }: { children: React.ReactNode }) {
   const init = getInitialAuth();
 
-  // Estados iniciales vienen del init (sincrónico).
   const [user, setUser] = useState<JwtUser | null>(init.user);
   const [access, setAccess] = useState<string | null>(init.access);
   const [loading, setLoading] = useState(false);
 
-  // Como ya hidratamos sincrónicamente:
   const booted = true;
 
   const login = async (correo: string, password: string, codigo?: string) => {
