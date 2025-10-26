@@ -77,20 +77,24 @@ export type ImagenPublicacion = {
 export type Publicacion = {
   id: number;
   comunidad_id: number;
-  propietario_usuario_id: number;             // ✅ nombre correcto
+  propietario_usuario_id: number;
   categoria_id: number;
-  tipo_publicacion_id: 1 | 2 | 3;             // 1=Servicio, 2=Producto, 3=Regalo
+  tipo_publicacion_id: 1 | 2 | 3; // 1=Servicio, 2=Producto, 3=Regalo
   titulo: string;
   descripcion?: string | null;
-  condicion_publicacion_id: 1 | 2 | 3;        // alias de condicion_producto_id
-  estado_publicacion_id: 1 | 2 | 3;           // 1=Activa, 2=Oculta, 3=Realizada
+  condicion_publicacion_id: 1 | 2 | 3; // alias de condicion_producto_id
+  estado_publicacion_id: 1 | 2 | 3;    // 1=Activa, 2=Oculta, 3=Realizada
   creada_en: string;
   actualizada_en: string;
   imagenes?: ImagenPublicacion[];
 
-  // Nuevos campos embebidos por el serializer de detalle:
+  // Enriquecimientos opcionales
   propietario_nombre?: string | null;
   propietario_apellidos?: string | null;
+
+  // NUEVO: contadores (si el backend los incluye)
+  ofertas_count_total?: number;
+  ofertas_count_pendientes?: number;
 };
 
 export type PublicacionListItem = {
@@ -103,6 +107,10 @@ export type PublicacionListItem = {
   creada_en: string;
   actualizada_en: string;
   primera_imagen?: string | null;
+
+  // NUEVO: contadores (opcionales)
+  ofertas_count_total?: number;
+  ofertas_count_pendientes?: number;
 };
 
 export type PageMeta = {
@@ -110,3 +118,25 @@ export type PageMeta = {
   page_size: number;
   total: number;
 };
+
+/** ====== Intercambios (Sprint 3) ====== */
+export type Intercambio = {
+  id: number;
+  comunidad_id: number;
+  estado_intercambio_id: 1 | 2 | 3; // 1=Pendiente, 2=Finalizado, 3=Cancelado
+  solicitante_usuario_id: number;
+  receptor_usuario_id: number;
+  publicacion_solicitada_id: number;
+  publicacion_ofrecida_id: number;
+  ultimo_estado_por_usuario_id?: number | null;
+
+  // API expone alias (DRF mapea desde creado_en/actualizado_en)
+  creada_en: string;
+  actualizada_en: string;
+};
+
+export type IntercambioListResponse = {
+  results: Intercambio[];
+  meta?: PageMeta;
+};
+

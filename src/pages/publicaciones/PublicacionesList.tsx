@@ -1,13 +1,16 @@
+// src/pages/publicaciones/PublicacionesList.tsx
 import { useEffect, useMemo, useState, useCallback, useRef } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import Spinner from "../../components/Spinner";
 import { AlertErr } from "../../components/Alert";
+import ConfirmModal from "../../components/ConfirmModal";
 import PublicationCard from "../../components/PublicationCard";
 import {
   getCategorias,
   listPublicaciones,
   patchEstado,
   toggleEstado,
+  deletePublicacion,
 } from "../../services/publicaciones";
 import type { Categoria, PublicacionListItem } from "../../types";
 
@@ -77,8 +80,23 @@ export default function PublicacionesList() {
   const [selectMode, setSelectMode] = useState(false);
   const [selected, setSelected] = useState<Set<number>>(new Set());
 
+  // --- Modal de confirmación de borrado ---
+  const [confirm, setConfirm] = useState<{
+    open: boolean;
+    ids: number[];
+    title: string;
+    description: string;
+    loading: boolean;
+  }>({
+    open: false,
+    ids: [],
+    title: "",
+    description: "",
+    loading: false,
+  });
+
   const searchRef = useRef<HTMLInputElement>(null);
-  const pages = useMemo(() => Math.max(1, Math.ceil(total / PAGE_SIZE)), [total]);
+  const totalPaginas = useMemo(() => Math.max(1, Math.ceil(total / PAGE_SIZE)), [total]);
 
   // ==============================
   // CARGA INICIAL + PERSISTENCIA
@@ -99,10 +117,7 @@ export default function PublicacionesList() {
   }, []);
 
   useEffect(() => {
-    localStorage.setItem(
-      CACHE_KEY,
-      JSON.stringify({ q, categoriaId, orden, mine })
-    );
+    localStorage.setItem(CACHE_KEY, JSON.stringify({ q, categoriaId, orden, mine }));
   }, [q, categoriaId, orden, mine]);
 
   // ==============================
@@ -162,12 +177,49 @@ export default function PublicacionesList() {
     await load();
   };
 
-  const onDone = async (id: number) => {
-    await patchEstado(id, 3);
-    await load();
+  // ——— abrir modal para eliminar 1
+  const onDelete = (id: number) => {
+    const it = items.find((x) => x.id === id);
+    const titulo = it?.titulo?.trim();
+    setConfirm({
+      open: true,
+      ids: [id],
+      title: "Eliminar publicación",
+      description: `Esta acción es definitiva. Se eliminará la publicación${
+        titulo ? `: “${titulo}”` : ` #${id}`
+      } y sus imágenes asociadas.`,
+      loading: false,
+    });
   };
 
-  // --- Selección múltiple ---
+  // ——— abrir modal para eliminar varias
+  const bulkDeleteAsk = () => {
+    if (selected.size === 0) return;
+    setConfirm({
+      open: true,
+      ids: Array.from(selected),
+      title: "Eliminar publicaciones",
+      description: `Esta acción es definitiva. Se eliminarán ${selected.size} publicaciones y sus imágenes asociadas.`,
+      loading: false,
+    });
+  };
+
+  // ——— confirmar (individual o masivo)
+  const confirmDelete = async () => {
+    try {
+      setConfirm((c) => ({ ...c, loading: true }));
+      await Promise.all(confirm.ids.map((id) => deletePublicacion(id)));
+      setConfirm({ open: false, ids: [], title: "", description: "", loading: false });
+      setSelected(new Set());
+      setSelectMode(false);
+      await load();
+    } catch (e: any) {
+      setErr(e?.message || "No se pudo eliminar.");
+      setConfirm((c) => ({ ...c, loading: false }));
+    }
+  };
+
+  // --- Selección múltiple (activar/ocultar) ---
   const toggleSelect = (id: number) => {
     setSelected((prev) => {
       const next = new Set(prev);
@@ -176,7 +228,7 @@ export default function PublicacionesList() {
     });
   };
 
-  const bulkChange = async (estado: 1 | 2 | 3) => {
+  const bulkChange = async (estado: 1 | 2) => {
     if (selected.size === 0) return;
     const ids = Array.from(selected);
     await Promise.all(ids.map((id) => patchEstado(id, estado)));
@@ -194,11 +246,6 @@ export default function PublicacionesList() {
     load();
     searchRef.current?.focus();
   };
-
-  const totalPaginas = useMemo(
-    () => Math.max(1, Math.ceil(total / PAGE_SIZE)),
-    [total]
-  );
 
   // ==============================
   // RENDER
@@ -219,9 +266,7 @@ export default function PublicacionesList() {
         <div className="flex items-center gap-3">
           {mine && (
             <button
-              className={`btn btn-outline ${
-                selectMode ? "ring-2 ring-blue-400" : ""
-              }`}
+              className={`btn btn-outline ${selectMode ? "ring-2 ring-blue-400" : ""}`}
               onClick={() => {
                 setSelectMode((v) => !v);
                 setSelected(new Set());
@@ -258,11 +303,7 @@ export default function PublicacionesList() {
             <label className="block text-sm text-gray-600 mb-1">Categoría</label>
             <select
               value={categoriaId ?? ""}
-              onChange={(e) =>
-                setCategoriaId(
-                  e.target.value ? Number(e.target.value) : undefined
-                )
-              }
+              onChange={(e) => setCategoriaId(e.target.value ? Number(e.target.value) : undefined)}
               className="w-full rounded-xl border-gray-300 bg-white focus:outline-none focus:ring-2 focus:ring-blue-400"
             >
               <option value="">Todas</option>
@@ -314,29 +355,29 @@ export default function PublicacionesList() {
       {err && <AlertErr>{err}</AlertErr>}
 
       {/* ======= ACCIONES MASIVAS ======= */}
-      {selectMode && selected.size > 0 && (
+      {mine && selectMode && selected.size > 0 && (
         <div className="sticky top-2 z-10 mb-3 rounded-xl border bg-white shadow flex flex-wrap items-center gap-3 p-3">
           <span className="text-sm text-slate-600">
             Seleccionadas: <b>{selected.size}</b>
           </span>
           <div className="flex items-center gap-2 ml-auto">
             <button
-              className="btn btn-outline btn-sm"
+              className="px-3 py-1.5 rounded-lg bg-emerald-600 text-white hover:bg-emerald-700"
               onClick={() => bulkChange(1)}
             >
               Activar
             </button>
             <button
-              className="btn btn-outline btn-sm"
+              className="px-3 py-1.5 rounded-lg bg-amber-500 text-white hover:bg-amber-600"
               onClick={() => bulkChange(2)}
             >
               Ocultar
             </button>
             <button
-              className="btn btn-primary btn-sm"
-              onClick={() => bulkChange(3)}
+              className="px-3 py-1.5 rounded-lg bg-red-600 text-white hover:bg-red-700"
+              onClick={bulkDeleteAsk}
             >
-              Realizada
+              Eliminar
             </button>
             <button
               className="btn btn-outline btn-sm"
@@ -363,12 +404,8 @@ export default function PublicacionesList() {
           <div className="mx-auto w-24 h-24 rounded-full bg-blue-50 flex items-center justify-center mb-4">
             <span className="text-3xl">🕊️</span>
           </div>
-          <h2 className="text-lg font-semibold mb-1">
-            No se encontraron publicaciones
-          </h2>
-          <p className="text-gray-500 mb-4">
-            Intenta ajustar los filtros o crea una nueva publicación.
-          </p>
+          <h2 className="text-lg font-semibold mb-1">No se encontraron publicaciones</h2>
+          <p className="text-gray-500 mb-4">Intenta ajustar los filtros o crea una nueva publicación.</p>
           <Link className="btn btn-primary" to="/publicaciones/nueva">
             Crear publicación
           </Link>
@@ -378,7 +415,7 @@ export default function PublicacionesList() {
           <div className="grid grid-cols-2 md:grid-cols-3 xl:grid-cols-4 gap-5">
             {items.map((it) => (
               <div key={it.id} className="relative transition-all">
-                {selectMode && (
+                {mine && selectMode && (
                   <label className="absolute top-2 right-2 z-10">
                     <input
                       type="checkbox"
@@ -391,15 +428,12 @@ export default function PublicacionesList() {
                 <PublicationCard
                   item={{
                     ...it,
-                    // cache-busting para ver la imagen recién subida
-                    primera_imagen: it.primera_imagen
-                      ? `${it.primera_imagen}?t=${Date.now()}`
-                      : null,
+                    primera_imagen: it.primera_imagen ? `${it.primera_imagen}?t=${Date.now()}` : null,
                   }}
                   showActions={mine && !selectMode}
                   onEdit={onEdit}
                   onToggleVisibility={onToggleVisibility}
-                  onDone={onDone}
+                  onDelete={onDelete}
                   highlight={q.trim() || undefined}
                 />
               </div>
@@ -418,19 +452,13 @@ export default function PublicacionesList() {
               </button>
 
               <span className="text-sm text-gray-600">
-                Página{" "}
-                <span className="font-semibold">
-                  {page}
-                </span>{" "}
-                de {totalPaginas}
+                Página <span className="font-semibold">{page}</span> de {totalPaginas}
               </span>
 
               <button
                 className="btn btn-outline px-3 py-1.5 rounded-lg border hover:bg-gray-50 disabled:opacity-50"
                 disabled={page >= totalPaginas}
-                onClick={() =>
-                  setPage((p) => Math.min(totalPaginas, p + 1))
-                }
+                onClick={() => setPage((p) => Math.min(totalPaginas, p + 1))}
               >
                 Siguiente ➡️
               </button>
@@ -438,6 +466,22 @@ export default function PublicacionesList() {
           )}
         </>
       )}
+
+      {/* ======= MODAL DE CONFIRMACIÓN ======= */}
+      <ConfirmModal
+        open={confirm.open}
+        title={confirm.title}
+        tone="danger"
+        confirmText={confirm.ids.length > 1 ? "Eliminar publicaciones" : "Eliminar publicación"}
+        cancelText="Cancelar"
+        disabled={confirm.loading}
+        onCancel={() =>
+          setConfirm({ open: false, ids: [], title: "", description: "", loading: false })
+        }
+        onConfirm={confirmDelete}
+      >
+        <p className="text-sm">{confirm.description}</p>
+      </ConfirmModal>
     </div>
   );
 }

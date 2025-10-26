@@ -7,10 +7,9 @@ type Props = {
   item: PublicacionListItem;
   showActions?: boolean;
   onEdit?: (id: number) => void;
-  /** Alterna visible/oculta según el estado actual */
   onToggleVisibility?: (item: PublicacionListItem) => Promise<void> | void;
-  onDone?: (id: number) => Promise<void> | void;
-  /** Texto a resaltar en el título (case-insensitive) */
+  onDone?: (id: number) => Promise<void> | void;         // compatibilidad
+  onDelete?: (id: number) => Promise<void> | void;       // abre modal en el padre
   highlight?: string;
 };
 
@@ -44,7 +43,8 @@ export default function PublicationCard({
   showActions = false,
   onEdit,
   onToggleVisibility,
-  onDone,
+  onDone,             // no se usa
+  onDelete,
   highlight,
 }: Props) {
   const img =
@@ -59,15 +59,20 @@ export default function PublicationCard({
 
   const chipClass = useMemo(() => {
     if (item.estado_publicacion_id === 1) return "bg-green-50 text-green-700 border-green-200";
-    if (item.estado_publicacion_id === 2) return "bg-yellow-50 text-yellow-700 border-yellow-200";
+    if (item.estado_publicacion_id === 2) return "bg-amber-50 text-amber-700 border-amber-200";
     return "bg-slate-100 text-slate-700 border-slate-200";
   }, [item.estado_publicacion_id]);
 
+  const ofertasLabel =
+    typeof (item as any).ofertas_count_pendientes === "number"
+      ? (item as any).ofertas_count_pendientes
+      : typeof (item as any).ofertas_count_total === "number"
+      ? (item as any).ofertas_count_total
+      : null;
+
   return (
     <div className="bg-white rounded-2xl border shadow-sm overflow-hidden flex flex-col hover:shadow-lg hover:-translate-y-0.5 transition-all">
-      {/* --- Área clickeable que va al detalle --- */}
       <Link to={`/publicaciones/${item.id}`} className="block group focus:outline-none focus:ring-2 focus:ring-blue-400">
-        {/* Imagen */}
         <div className="relative bg-gray-50">
           <div className="aspect-[4/3] md:aspect-square overflow-hidden">
             <img
@@ -78,7 +83,6 @@ export default function PublicationCard({
             />
           </div>
 
-          {/* Chip de estado sobre la foto */}
           <span
             className={[
               "absolute top-2 left-2 text-xs px-2 py-0.5 rounded-full border backdrop-blur-sm",
@@ -89,9 +93,17 @@ export default function PublicationCard({
           >
             {estadoTxt}
           </span>
+
+          {ofertasLabel !== null && (
+            <span
+              className="absolute top-2 right-2 text-xs px-2 py-0.5 rounded-full border bg-blue-50 text-blue-700 border-blue-200"
+              title="Ofertas"
+            >
+              🔁 {ofertasLabel}
+            </span>
+          )}
         </div>
 
-        {/* Contenido */}
         <div className="p-3">
           <h3 className="font-semibold leading-snug line-clamp-2 min-h-[2.5rem]">
             <Highlight text={item.titulo} needle={highlight} />
@@ -102,7 +114,6 @@ export default function PublicationCard({
         </div>
       </Link>
 
-      {/* Acciones administrativas (no clickeables) */}
       {showActions && (
         <div className="px-3 pb-3 mt-auto flex items-center gap-2">
           <button
@@ -120,13 +131,13 @@ export default function PublicationCard({
             {toggleLabel}
           </button>
 
+          {/* Eliminar usa modal del padre */}
           <button
-            className="btn btn-primary px-3 py-1.5 rounded-lg bg-blue-600 text-white hover:bg-blue-700"
-            onClick={() => onDone && onDone(item.id)}
-            title="Marcar como realizada"
-            disabled={item.estado_publicacion_id === 3}
+            className="btn px-3 py-1.5 rounded-lg bg-red-600 text-white hover:bg-red-700"
+            onClick={() => onDelete && onDelete(item.id)}
+            title="Eliminar publicación"
           >
-            Realizada
+            Eliminar
           </button>
         </div>
       )}

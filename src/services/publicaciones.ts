@@ -30,7 +30,7 @@ type UploadImgsResponse = {
   data: Array<{ id: number; url: string; posicion: number; creada_en: string }>;
 };
 
-// --- Catálogo ---
+// ---------------------- Catálogo ----------------------
 export async function getCategorias(): Promise<Categoria[]> {
   try {
     const data = await request<any>("/catalogos/categoria/");
@@ -47,18 +47,36 @@ export async function getCategorias(): Promise<Categoria[]> {
   }
 }
 
-// --- Publicaciones ---
+// ---------------------- Publicaciones ----------------------
 export async function listPublicaciones(params: ListParams = {}): Promise<ListResponse> {
   const qs = new URLSearchParams();
   if (params.q) qs.set("q", params.q);
   if (params.categoria_id) qs.set("categoria_id", String(params.categoria_id));
-  if (params.estado_publicacion_id) qs.set("estado_publicacion_id", String(params.estado_publicacion_id));
+  if (params.estado_publicacion_id)
+    qs.set("estado_publicacion_id", String(params.estado_publicacion_id));
   if (params.orden) qs.set("orden", params.orden);
   if (params.page) qs.set("page", String(params.page));
   if (params.page_size) qs.set("page_size", String(params.page_size));
   if (params.mine) qs.set("mine", "true");
+
   const query = qs.toString() ? `?${qs.toString()}` : "";
-  return request<ListResponse>(`/publicaciones/publicaciones/${query}`);
+  const data: any = await request(`/publicaciones/publicaciones/${query}`);
+
+  // 🔧 Normalización para soportar respuesta como array plano o como {results, meta}
+  if (Array.isArray(data)) {
+    return {
+      results: data as PublicacionListItem[],
+      meta: {
+        count: (data as any[]).length,
+        page: params.page ?? 1,
+        page_size: params.page_size ?? (data as any[]).length,
+      },
+    };
+  }
+  if (Array.isArray(data?.results)) {
+    return data as ListResponse;
+  }
+  return { results: [], meta: { count: 0, page: 1, page_size: 0 } };
 }
 
 export async function getPublicacion(id: number): Promise<Publicacion> {
@@ -119,8 +137,11 @@ export async function setImagenes(
   });
 }
 
-/** Subida por archivos con multipart */
-export async function uploadImagenesArchivo(pubId: number, files: File[]): Promise<UploadImgsResponse> {
+/** Subida por archivos con multipart; devuelve SOLO las URLs subidas (no altera DB) */
+export async function uploadImagenesArchivo(
+  pubId: number,
+  files: File[]
+): Promise<UploadImgsResponse> {
   const form = new FormData();
   files.slice(0, 4).forEach((f) => form.append("files", f));
 
