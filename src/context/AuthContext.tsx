@@ -1,11 +1,11 @@
-// src/context/AuthContext.tsx
 import { createContext, useContext, useMemo, useState } from "react";
 import { AuthApi, type LoginResp, type JwtUser } from "../services/auth";
 
 type AuthCtx = {
   user: JwtUser | null;
   access: string | null;
-  login: (correo: string, password: string, codigo?: string) => Promise<void>;
+  // ⬇️ ahora login devuelve LoginResp para que el caller pueda redirigir por rol
+  login: (correo: string, password: string, codigo?: string) => Promise<LoginResp>;
   logout: () => void;
   loading: boolean;
   booted: boolean;
@@ -14,7 +14,11 @@ type AuthCtx = {
 const Ctx = createContext<AuthCtx>({
   user: null,
   access: null,
-  login: async () => {},
+  login: async () => {
+    // Este valor por defecto no se usa porque siempre envolvemos con el provider,
+    // pero dejamos una implementación que cumple el tipo.
+    throw new Error("AuthContext not mounted");
+  },
   logout: () => {},
   loading: false,
   booted: false,
@@ -42,9 +46,14 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [access, setAccess] = useState<string | null>(init.access);
   const [loading, setLoading] = useState(false);
 
+  // Si más adelante haces chequeos iniciales/refresh, aquí puedes cambiar este flag.
   const booted = true;
 
-  const login = async (correo: string, password: string, codigo?: string) => {
+  const login = async (
+    correo: string,
+    password: string,
+    codigo?: string
+  ): Promise<LoginResp> => {
     setLoading(true);
     try {
       const res = await AuthApi.login(correo, password, codigo);
@@ -54,6 +63,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       localStorage.setItem("tk_access", data.access);
       localStorage.setItem("tk_refresh", data.refresh);
       localStorage.setItem("tk_user", JSON.stringify(data.user));
+      return data; // ⬅️ devolvemos el payload para que el caller decida la ruta
     } finally {
       setLoading(false);
     }

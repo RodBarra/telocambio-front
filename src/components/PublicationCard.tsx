@@ -8,8 +8,8 @@ type Props = {
   showActions?: boolean;
   onEdit?: (id: number) => void;
   onToggleVisibility?: (item: PublicacionListItem) => Promise<void> | void;
-  onDone?: (id: number) => Promise<void> | void;         // compatibilidad
-  onDelete?: (id: number) => Promise<void> | void;       // abre modal en el padre
+  onDone?: (id: number) => Promise<void> | void; // compatibilidad
+  onDelete?: (id: number) => Promise<void> | void; // abre modal en el padre
   highlight?: string;
 };
 
@@ -21,17 +21,20 @@ const ESTADO_LABEL: Record<number, string> = {
 
 function Highlight({ text, needle }: { text: string; needle?: string }) {
   if (!needle) return <>{text}</>;
-  const re = new RegExp(`(${needle.replace(/[.*+?^${}()|[\\]\\\\]/g, "\\$&")})`, "ig");
+
+  const escaped = needle.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+  const re = new RegExp(`(${escaped})`, "ig");
   const parts = text.split(re);
+
   return (
     <>
-      {parts.map((p, i) =>
-        re.test(p) ? (
-          <mark key={i} className="bg-yellow-200/60 rounded px-0.5">
-            {p}
+      {parts.map((part, idx) =>
+        idx % 2 === 1 ? (
+          <mark key={idx} className="bg-yellow-200/70 rounded px-0.5">
+            {part}
           </mark>
         ) : (
-          <span key={i}>{p}</span>
+          <span key={idx}>{part}</span>
         )
       )}
     </>
@@ -43,7 +46,7 @@ export default function PublicationCard({
   showActions = false,
   onEdit,
   onToggleVisibility,
-  onDone,             // no se usa
+  onDone,
   onDelete,
   highlight,
 }: Props) {
@@ -54,90 +57,118 @@ export default function PublicationCard({
 
   const estadoTxt = ESTADO_LABEL[item.estado_publicacion_id] ?? "—";
   const isOculta = item.estado_publicacion_id === 2;
-  const toggleLabel = isOculta ? "Mostrar" : "Ocultar";
   const toggleTitle = isOculta ? "Hacer visible" : "Ocultar publicación";
 
-  const chipClass = useMemo(() => {
-    if (item.estado_publicacion_id === 1) return "bg-green-50 text-green-700 border-green-200";
-    if (item.estado_publicacion_id === 2) return "bg-amber-50 text-amber-700 border-amber-200";
-    return "bg-slate-100 text-slate-700 border-slate-200";
+  const estadoChipClass = useMemo(() => {
+    if (item.estado_publicacion_id === 2) return "bg-amber-500 text-white";
+    if (item.estado_publicacion_id === 3) return "bg-emerald-700 text-white";
+    return "bg-slate-700 text-white";
   }, [item.estado_publicacion_id]);
 
-  const ofertasLabel =
+  const ofertasCount =
     typeof (item as any).ofertas_count_pendientes === "number"
       ? (item as any).ofertas_count_pendientes
       : typeof (item as any).ofertas_count_total === "number"
       ? (item as any).ofertas_count_total
       : null;
 
+  const fechaStr = useMemo(() => {
+    try {
+      return new Date(item.creada_en).toLocaleDateString("es-CL", {
+        day: "2-digit",
+        month: "2-digit",
+        year: "numeric",
+      });
+    } catch {
+      return "";
+    }
+  }, [item.creada_en]);
+
   return (
-    <div className="bg-white rounded-2xl border shadow-sm overflow-hidden flex flex-col hover:shadow-lg hover:-translate-y-0.5 transition-all">
-      <Link to={`/publicaciones/${item.id}`} className="block group focus:outline-none focus:ring-2 focus:ring-blue-400">
-        <div className="relative bg-gray-50">
+    <div className="bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden flex flex-col hover:shadow-lg hover:-translate-y-0.5 transition-all duration-200">
+      <Link
+        to={`/publicaciones/${item.id}`}
+        className="block group focus:outline-none focus:ring-2 focus:ring-blue-400 focus:ring-offset-2 focus:ring-offset-white"
+      >
+        <div className="relative bg-slate-50">
           <div className="aspect-[4/3] md:aspect-square overflow-hidden">
             <img
               src={img}
               alt={item.titulo}
-              className="w-full h-full object-cover object-center select-none transition-transform duration-300 group-hover:scale-[1.02]"
+              className="w-full h-full object-cover object-center select-none transition-transform duration-300 group-hover:scale-[1.03]"
               loading="lazy"
             />
           </div>
 
-          <span
-            className={[
-              "absolute top-2 left-2 text-xs px-2 py-0.5 rounded-full border backdrop-blur-sm",
-              chipClass,
-            ].join(" ")}
-            title={`Estado: ${estadoTxt}`}
-            aria-label={`Estado: ${estadoTxt}`}
-          >
-            {estadoTxt}
-          </span>
-
-          {ofertasLabel !== null && (
+          {item.estado_publicacion_id !== 1 && (
             <span
-              className="absolute top-2 right-2 text-xs px-2 py-0.5 rounded-full border bg-blue-50 text-blue-700 border-blue-200"
-              title="Ofertas"
+              className={[
+                "absolute top-2 left-2 text-[11px] font-semibold px-2 py-0.5 rounded-full shadow-sm",
+                estadoChipClass,
+              ].join(" ")}
+              title={`Estado: ${estadoTxt}`}
+              aria-label={`Estado: ${estadoTxt}`}
             >
-              🔁 {ofertasLabel}
+              {estadoTxt}
+            </span>
+          )}
+
+          {ofertasCount !== null && (
+            <span
+              className="absolute top-2 right-2 inline-flex items-center gap-1 text-[11px] font-medium px-2 py-0.5 rounded-full bg-white/90 text-slate-700 border border-slate-200 shadow-sm"
+              title="Ofertas recibidas"
+            >
+              <span>Ofertas de Trueque</span>
+              <span className="inline-flex items-center justify-center min-w-[1.5rem] h-5 rounded-full bg-blue-600 text-white text-[11px] font-semibold px-1">
+                {ofertasCount}
+              </span>
             </span>
           )}
         </div>
 
         <div className="p-3">
-          <h3 className="font-semibold leading-snug line-clamp-2 min-h-[2.5rem]">
+          <h3 className="font-semibold leading-snug text-slate-900 line-clamp-2 min-h-[2.5rem]">
             <Highlight text={item.titulo} needle={highlight} />
           </h3>
-          <div className="mt-1 text-xs text-gray-500">
-            {new Date(item.creada_en).toLocaleDateString()}
+          <div className="mt-1 text-xs text-slate-500 flex items-center gap-1">
+            <span aria-hidden="true">📅</span>
+            <span>{fechaStr}</span>
           </div>
         </div>
       </Link>
 
       {showActions && (
-        <div className="px-3 pb-3 mt-auto flex items-center gap-2">
+        <div className="px-3 pb-3 mt-auto flex items-center gap-2 flex-nowrap justify-center">
           <button
-            className="btn btn-outline px-3 py-1.5 rounded-lg border hover:bg-gray-50"
+            type="button"
+            className="inline-flex items-center justify-center px-2.5 py-1.5 text-[11px] font-semibold rounded-lg 
+                       bg-white text-blue-500 border border-blue-500 
+                       hover:bg-blue-500 hover:text-white transition-colors"
             onClick={() => onEdit && onEdit(item.id)}
           >
-            Editar
+            ✏️ Editar
           </button>
 
           <button
-            className="btn btn-outline px-3 py-1.5 rounded-lg border hover:bg-gray-50"
+            type="button"
+            className="inline-flex items-center justify-center px-2.5 py-1.5 text-[11px] font-semibold rounded-lg 
+                       bg-white text-blue-500 border border-blue-500 
+                       hover:bg-blue-500 hover:text-white transition-colors"
             onClick={() => onToggleVisibility && onToggleVisibility(item)}
             title={toggleTitle}
           >
-            {toggleLabel}
+            {isOculta ? "👁️ Mostrar" : "🙈 Ocultar"}
           </button>
 
-          {/* Eliminar usa modal del padre */}
           <button
-            className="btn px-3 py-1.5 rounded-lg bg-red-600 text-white hover:bg-red-700"
+            type="button"
+            className="inline-flex items-center justify-center px-3 py-1.5 text-[11px] font-semibold rounded-lg 
+                       bg-rose-600 text-white border border-rose-600 
+                       hover:bg-white hover:text-rose-600 transition-colors"
             onClick={() => onDelete && onDelete(item.id)}
             title="Eliminar publicación"
           >
-            Eliminar
+            🗑️ Eliminar
           </button>
         </div>
       )}

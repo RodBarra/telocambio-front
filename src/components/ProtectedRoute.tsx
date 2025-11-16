@@ -4,13 +4,19 @@ import { useAuth } from "../context/AuthContext";
 
 type Props = {
   children?: ReactNode;
-  roles?: number[]; // 1=Admin, 2=Mod, 3=Residente
+  /** 1=Admin, 2=Mod, 3=Residente */
+  roles?: Array<1 | 2 | 3>;
 };
+
+function getRoleHome(rol?: 1 | 2 | 3) {
+  if (rol === 1) return "/mod/usuarios"; // Admin
+  return "/publicaciones";               // Mod / Residente
+}
 
 export default function ProtectedRoute({ children, roles }: Props) {
   const { user, booted, loading } = useAuth();
 
-  // Si en algún momento cambias a hidratación asíncrona, esto evita redirecciones tempranas
+  // Evita redirecciones tempranas si algún día hidratas en frío
   if (!booted || loading) {
     return (
       <div className="min-h-screen grid place-items-center text-slate-600">
@@ -19,13 +25,14 @@ export default function ProtectedRoute({ children, roles }: Props) {
     );
   }
 
+  // No autenticado
   if (!user) return <Navigate to="/login" replace />;
 
+  // Sin permiso para esta ruta
   if (roles && !roles.includes(user.rol_usuario_id)) {
-    // Sin permiso -> al dashboard
-    return <Navigate to="/dashboard" replace />;
+    return <Navigate to={getRoleHome(user.rol_usuario_id)} replace />;
   }
 
-  // Si children, renderízalo; si no, Outlet (para rutas anidadas)
+  // OK
   return children ? <>{children}</> : <Outlet />;
 }

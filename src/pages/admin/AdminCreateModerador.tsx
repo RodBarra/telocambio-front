@@ -1,5 +1,5 @@
 import { FormEvent, useEffect, useState } from "react";
-import { useSearchParams } from "react-router-dom";
+import { useSearchParams, useNavigate } from "react-router-dom"; // --- MODIFICACIÓN: Importar useNavigate ---
 import { ComunidadesApi } from "../../services/comunidades";
 import type { Comunidad } from "../../services/comunidades";
 import { UsuariosApi } from "../../services/usuarios";
@@ -17,9 +17,10 @@ type FormState = {
 
 type Errors = Partial<Record<keyof FormState, string>>;
 
-export default function AdminCreateModerador() {
+export default function CrearComunidad() {
   const [params] = useSearchParams();
   const preId = Number(params.get("comunidad_id") || 0);
+  const nav = useNavigate(); // --- MODIFICACIÓN: Inicializar useNavigate ---
 
   const [coms, setComs] = useState<Comunidad[]>([]);
   const [form, setForm] = useState<FormState>({
@@ -32,7 +33,7 @@ export default function AdminCreateModerador() {
   });
 
   const [errors, setErrors] = useState<Errors>({});
-  const [submitted, setSubmitted] = useState(false); // <- mostrar errores solo tras submit
+  const [submitted, setSubmitted] = useState(false);
   const [ok, setOk] = useState<string | null>(null);
   const [err, setErr] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
@@ -41,7 +42,6 @@ export default function AdminCreateModerador() {
     setForm((f) => ({ ...f, [k]: v }));
 
   useEffect(() => {
-    // si el backend trae sin_moderador, lo usamos; si no, filtramos en cliente
     ComunidadesApi.list({ page_size: 1000, sin_moderador: 1 as any })
       .then(({ data }) => setComs((data.items || []).filter((c) => !c.moderador_correo)))
       .catch(async () => {
@@ -68,7 +68,7 @@ export default function AdminCreateModerador() {
 
     if (!f.nombre.trim()) e.nombre = "Nombre es obligatorio.";
     if (!f.apellidos.trim()) e.apellidos = "Apellidos son obligatorios.";
-    // teléfono opcional
+
     return e;
   };
 
@@ -92,9 +92,8 @@ export default function AdminCreateModerador() {
         apellidos: form.apellidos.trim(),
         telefono: form.telefono.trim() || undefined,
       });
-      setOk("Moderador creado correctamente.");
+      setOk("Comunidad creada correctamente.");
 
-      // Reset manteniendo comunidad preseleccionada
       setForm({
         comunidad_id: preId || 0,
         correo: "",
@@ -110,7 +109,7 @@ export default function AdminCreateModerador() {
       const msg =
         payload?.detail ||
         payload?.errors ||
-        "No se pudo crear el moderador.";
+        "No se pudo crear la comunidad.";
       setErr(typeof msg === "string" ? msg : JSON.stringify(msg));
     } finally {
       setLoading(false);
@@ -120,94 +119,141 @@ export default function AdminCreateModerador() {
   const showErr = (key: keyof Errors) => submitted && !!errors[key];
 
   return (
-    <div className="max-w-xl mx-auto px-4 py-8">
-      <h1 className="text-2xl font-bold mb-4">Crear moderador</h1>
-
-      {ok && (
-        <div className="mb-4">
-          <AlertOk>{ok}</AlertOk>
-        </div>
-      )}
-      {err && (
-        <div className="mb-4">
-          <AlertErr>{err}</AlertErr>
-        </div>
-      )}
-
-      <form className="card p-6 space-y-4" onSubmit={onSubmit} noValidate>
-        {/* Comunidad */}
-        <div>
-          <label className="label">Comunidad</label>
-          <select
-            className={`input ${showErr("comunidad_id") ? "border-red-300 focus:ring-red-300" : ""}`}
-            value={form.comunidad_id}
-            onChange={(e)=>set("comunidad_id", Number(e.target.value))}
+    <div
+      className="min-h-screen flex items-center justify-center bg-cover bg-center"
+      style={{ backgroundImage: "url('/hero-planes.jpg')" }}
+    >
+      <div
+        className="max-w-xl w-full rounded-xl shadow-2xl p-8 bg-cover bg-center"
+        style={{
+          backgroundImage: "url('/fondoformulario.jpg')",
+        }}
+      >
+        
+        {/* --- INICIO DE LA MODIFICACIÓN (TÍTULO Y BOTÓN VOLVER) --- */}
+        <div className="relative flex items-center justify-between mb-6">
+          <button
+            type="button"
+            onClick={() => nav(-1)} // Vuelve a la página anterior
+            disabled={loading}
+            className="btn bg-white text-blue-500 border border-blue-500 hover:bg-blue-500 hover:text-white transition-colors px-3 py-1.5 rounded-xl"
           >
-            <option value={0}>Selecciona...</option>
-            {coms.map(c => (
-              <option key={c.id} value={c.id}>
-                {c.nombre} ({c.codigo})
-              </option>
-            ))}
-          </select>
-          {showErr("comunidad_id") && (
-            <p className="mt-1 text-xs text-red-600">{errors.comunidad_id}</p>
-          )}
+            &larr; Volver
+          </button>
+          
+          <h1 className="absolute left-1/2 -translate-x-1/2 text-2xl font-bold text-center text-gray-900">
+            Crear Moderador
+          </h1>
+          
+          <div aria-hidden="true"></div> {/* Espaciador */}
         </div>
+        {/* --- FIN DE LA MODIFICACIÓN --- */}
 
-        {/* Correo */}
-        <Field label="Correo" error={showErr("correo") ? errors.correo : undefined}>
-          <input
-            className={`input ${showErr("correo") ? "border-red-300 focus:ring-red-300" : ""}`}
-            value={form.correo}
-            onChange={(e)=>set("correo", e.target.value)}
-            placeholder="moderador@comunidad.cl"
-            inputMode="email"
-          />
-        </Field>
 
-        {/* Contraseña */}
-        <Field label="Contraseña" error={showErr("password") ? errors.password : undefined}>
-          <input
-            className={`input ${showErr("password") ? "border-red-300 focus:ring-red-300" : ""}`}
-            type="password"
-            value={form.password}
-            onChange={(e)=>set("password", e.target.value)}
-            placeholder="Mín. 8, 1 mayúscula, 1 número"
-          />
-        </Field>
+        {ok && (
+          <div className="mb-4">
+            <AlertOk>{ok}</AlertOk>
+          </div>
+        )}
+        {err && (
+          <div className="mb-4">
+            <AlertErr>{err}</AlertErr>
+          </div>
+        )}
 
-        {/* Nombre */}
-        <Field label="Nombre" error={showErr("nombre") ? errors.nombre : undefined}>
-          <input
-            className={`input ${showErr("nombre") ? "border-red-300 focus:ring-red-300" : ""}`}
-            value={form.nombre}
-            onChange={(e)=>set("nombre", e.target.value)}
-          />
-        </Field>
+        <form className="space-y-4" onSubmit={onSubmit} noValidate>
+          {/* Comunidad */}
+          <div>
+            <label className="label">Comunidad</label>
+            <select
+              className={`input w-full ${
+                showErr("comunidad_id") ? "border-red-300 focus:ring-red-300" : ""
+              }`}
+              value={form.comunidad_id}
+              onChange={(e) => set("comunidad_id", Number(e.target.value))}
+            >
+              <option value={0}>Selecciona...</option>
+              {coms.map((c) => (
+                <option key={c.id} value={c.id}>
+                  {c.nombre} ({c.codigo})
+                </option>
+              ))}
+            </select>
+            {showErr("comunidad_id") && (
+              <p className="mt-1 text-xs text-red-600">{errors.comunidad_id}</p>
+            )}
+          </div>
 
-        {/* Apellidos */}
-        <Field label="Apellidos" error={showErr("apellidos") ? errors.apellidos : undefined}>
-          <input
-            className={`input ${showErr("apellidos") ? "border-red-300 focus:ring-red-300" : ""}`}
-            value={form.apellidos}
-            onChange={(e)=>set("apellidos", e.target.value)}
-          />
-        </Field>
+          {/* Correo */}
+          <Field label="Correo" error={showErr("correo") ? errors.correo : undefined}>
+            <input
+              className={`input w-full ${
+                showErr("correo") ? "border-red-300 focus:ring-red-300" : ""
+              }`}
+              value={form.correo}
+              onChange={(e) => set("correo", e.target.value)}
+              placeholder="moderador@comunidad.cl"
+              inputMode="email"
+            />
+          </Field>
 
-        {/* Teléfono (opcional) */}
-        <Field label="Teléfono (opcional)">
-          <input
-            className="input"
-            value={form.telefono}
-            onChange={(e)=>set("telefono", e.target.value)}
-          />
-        </Field>
+          {/* Contraseña */}
+          <Field label="Contraseña" error={showErr("password") ? errors.password : undefined}>
+            <input
+              className={`input w-full ${
+                showErr("password") ? "border-red-300 focus:ring-red-300" : ""
+              }`}
+              type="password"
+              value={form.password}
+              onChange={(e) => set("password", e.target.value)}
+              placeholder="Mín. 8, 1 mayúscula, 1 número"
+            />
+          </Field>
 
-        <button className="btn-primary" disabled={loading}>
-          {loading ? "Creando..." : "Crear"}
-        </button>
-      </form>
+          {/* Nombre */}
+          <Field label="Nombre" error={showErr("nombre") ? errors.nombre : undefined}>
+            <input
+              className={`input w-full ${
+                showErr("nombre") ? "border-red-300 focus:ring-red-300" : ""
+              }`}
+              value={form.nombre}
+              onChange={(e) => set("nombre", e.target.value)}
+            />
+          </Field>
+
+          {/* Apellidos */}
+          <Field label="Apellidos" error={showErr("apellidos") ? errors.apellidos : undefined}>
+            <input
+              className={`input w-full ${
+                showErr("apellidos") ? "border-red-300 focus:ring-red-300" : ""
+              }`}
+              value={form.apellidos}
+              onChange={(e) => set("apellidos", e.target.value)}
+            />
+          </Field>
+
+          {/* Teléfono */}
+          <Field label="Teléfono (opcional)">
+            <input
+              className="input w-full"
+              value={form.telefono}
+              onChange={(e) => set("telefono", e.target.value)}
+            />
+          </Field>
+
+          {/* --- INICIO DE LA MODIFICACIÓN (BOTÓN CENTRADO) --- */}
+          <div className="flex justify-center pt-4">
+            <button
+              type="submit"
+              className="inline-flex items-center rounded-lg border border-blue-500 bg-white px-[30px] py-[10px] text-sm font-semibold text-blue-500 shadow-sm transition-colors hover:bg-blue-500 hover:text-white disabled:cursor-not-allowed disabled:opacity-50"
+              disabled={loading}
+            >
+              {loading ? "Creando..." : "Crear Moderador"}
+            </button>
+          </div>
+          {/* --- FIN DE LA MODIFICACIÓN --- */}
+        </form>
+      </div>
     </div>
   );
 }

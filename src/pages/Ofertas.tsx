@@ -1,7 +1,6 @@
 export default function Ofertas() {
-  
   // --- CAMBIO: NUEVO ESTILO UNIFICADO PARA LOS BOTONES ---
-  const unifiedCtaStyle = 
+  const unifiedCtaStyle =
     "w-full inline-flex items-center justify-center rounded-xl border border-indigo-600 bg-white px-4 py-2 text-sm font-semibold text-indigo-600 shadow-sm transition-colors duration-200 " +
     "hover:bg-indigo-600 hover:text-white " + // Efecto al pasar sobre el botón
     "group-hover:bg-indigo-600 group-hover:text-white"; // Efecto al pasar sobre la tarjeta
@@ -48,17 +47,44 @@ export default function Ofertas() {
           style={{ backgroundImage: "url('/hero-planes.jpg')" }}
           aria-hidden
         />
-        <div className="absolute inset-0 -z-10 bg-gradient-to-b from-slate-900/35 via-white/10 to-white/92" aria-hidden />
+        <div
+          className="absolute inset-0 -z-10 bg-gradient-to-b from-slate-900/35 via-white/10 to-white/92"
+          aria-hidden
+        />
         <div className="mx-auto max-w-7xl px-4 py-16">
-          <div className="max-w-3xl">
-            <h1 className="text-4xl font-extrabold tracking-tight text-slate-900">
-              Planes para tu comunidad
-            </h1>
-            <p className="mt-3 text-lg text-slate-700">
-              <span className="font-bold text-slate-900">Elige el plan ideal. Todos incluyen autenticación por padrón,
-              publicaciones internas, ofertas de intercambio y panel para
-              moderadores. Precios en CLP (+IVA).</span>
+          {/* HEADER A ANCHO COMPLETO */}
+          <div className="rounded-2xl bg-white/90 backdrop-blur px-6 py-7 shadow-xl ring-1 ring-black/5">
+            <p className="text-xs font-semibold uppercase tracking-[0.15em] text-indigo-500">
+              Planes mensuales por comunidad
             </p>
+            <h1 className="mt-3 text-4xl sm:text-5xl font-extrabold tracking-tight text-slate-900">
+              Planes para tu{" "}
+              <span className="bg-gradient-to-r from-indigo-600 to-blue-500 bg-clip-text text-transparent">
+                comunidad
+              </span>
+            </h1>
+            <p className="mt-3 text-base sm:text-lg text-slate-700">
+              Elige el plan ideal. Todos incluyen{" "}
+              <span className="font-semibold text-slate-900">
+                autenticación por padrón, publicaciones internas, ofertas de
+                intercambio y panel para moderadores.
+              </span>{" "}
+              Precios en CLP (+IVA).
+            </p>
+            <div className="mt-4 flex flex-wrap gap-2 text-xs sm:text-sm">
+              <span className="inline-flex items-center gap-1 rounded-full bg-slate-50 px-3 py-1 border border-slate-200 text-slate-700">
+                <span className="text-base">🔒</span>
+                <span>Acceso por padrón y rol</span>
+              </span>
+              <span className="inline-flex items-center gap-1 rounded-full bg-slate-50 px-3 py-1 border border-slate-200 text-slate-700">
+                <span className="text-base">🏢</span>
+                <span>Diseñado para comunidades cerradas</span>
+              </span>
+              <span className="inline-flex items-center gap-1 rounded-full bg-slate-50 px-3 py-1 border border-slate-200 text-slate-700">
+                <span className="text-base">💬</span>
+                <span>Soporte por correo incluido</span>
+              </span>
+            </div>
           </div>
 
           <div className="mt-10 grid gap-6 md:grid-cols-3">
@@ -73,7 +99,7 @@ export default function Ofertas() {
                 ].join(" ")}
               >
                 <div className="absolute inset-0 rounded-2xl bg-black/0 transition-colors group-hover:bg-black/5" />
-                
+
                 <div className="relative">
                   <div className="flex items-start justify-between">
                     <div>
@@ -85,15 +111,17 @@ export default function Ofertas() {
                       </p>
                     </div>
                     {p.highlight && (
-                        <span className="text-xs rounded-full bg-indigo-600 text-white px-2 py-0.5 font-semibold">
-                          Recomendado
-                        </span> 
+                      <span className="text-xs rounded-full bg-indigo-600 text-white px-2 py-0.5 font-semibold">
+                        Recomendado
+                      </span>
                     )}
                   </div>
 
                   <div className="mt-5">
                     <div className="flex items-end gap-1">
-                      <span className="text-4xl font-extrabold text-slate-900">${p.price}</span>
+                      <span className="text-4xl font-extrabold text-slate-900">
+                        ${p.price}
+                      </span>
                       <span className="mb-1 text-slate-500">/ mes</span>
                     </div>
                   </div>
@@ -105,7 +133,7 @@ export default function Ofertas() {
                     <Feature>Panel de moderación</Feature>
                     <Feature>Soporte por email en horario hábil</Feature>
                   </ul>
-                  
+
                   <button
                     className={["w-full", "mt-6", p.ctaStyle].join(" ")}
                     aria-label={`Contratar plan ${p.name}`}
@@ -120,7 +148,7 @@ export default function Ofertas() {
               </div>
             ))}
           </div>
-          
+
           <div className="mt-12 rounded-2xl bg-white/80 backdrop-blur border border-slate-200 p-6">
             <h2 className="text-lg font-semibold">Comparativa rápida</h2>
             <div className="mt-4 grid gap-4 sm:grid-cols-3">
@@ -131,12 +159,16 @@ export default function Ofertas() {
               <div className="rounded-xl border border-slate-200 p-4">
                 <div className="text-sm text-slate-500">Soporte</div>
                 <div className="mt-1 text-2xl font-bold">Email</div>
-                <div className="text-xs text-slate-500">Prioridad mayor en plan Grande</div>
+                <div className="text-xs text-slate-500">
+                  Prioridad mayor en plan Grande
+                </div>
               </div>
               <div className="rounded-xl border border-slate-200 p-4">
                 <div className="text-sm text-slate-500">Funciones</div>
                 <div className="mt-1 text-2xl font-bold">Completas</div>
-                <div className="text-xs text-slate-500">Todas las funciones en todos los planes</div>
+                <div className="text-xs text-slate-500">
+                  Todas las funciones en todos los planes
+                </div>
               </div>
             </div>
           </div>
@@ -144,7 +176,7 @@ export default function Ofertas() {
           <div className="mt-12 rounded-2xl border border-slate-200 bg-white/90 backdrop-blur p-6">
             <h2 className="text-lg font-semibold">Add-ons opcionales</h2>
             <div className="mt-4 grid gap-4 md:grid-cols-3">
-                {/* ... (contenido de add-ons) ... */}
+              {/* ... (contenido de add-ons) ... */}
             </div>
           </div>
 
@@ -152,18 +184,20 @@ export default function Ofertas() {
             <div className="rounded-2xl border border-slate-200 bg-white p-6">
               <h3 className="font-semibold">¿Cómo se cuentan los usuarios?</h3>
               <p className="mt-2 text-sm text-slate-600">
-                Se consideran usuarios activos de una comunidad durante el mes. Si superan el
-                límite del plan elegido, puedes subir de plan en cualquier momento.
+                Se consideran usuarios activos de una comunidad durante el mes.
+                Si superan el límite del plan elegido, puedes subir de plan en
+                cualquier momento.
               </p>
             </div>
             <div className="rounded-2xl border border-slate-200 bg-white p-6">
               <h3 className="font-semibold">¿Hay permanencia mínima?</h3>
               <p className="mt-2 text-sm text-slate-600">
-                No. Puedes cancelar cuando quieras. El cobro es mes a mes, por comunidad.
+                No. Puedes cancelar cuando quieras. El cobro es mes a mes, por
+                comunidad.
               </p>
             </div>
           </div>
-          
+
           <div className="mt-12 rounded-2xl border border-indigo-200 bg-gradient-to-r from-indigo-50 to-blue-50 p-6">
             <div className="flex flex-col items-start gap-4 md:flex-row md:items-center md:justify-between">
               <div>

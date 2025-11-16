@@ -2,7 +2,9 @@ import { FormEvent, useState } from "react";
 import { useNavigate, Link } from "react-router-dom";
 import { useAuth } from "../context/AuthContext";
 
-const AlertPopup = ({ message, onClose }) => (
+type AlertProps = { message: string; onClose: () => void };
+
+const AlertPopup = ({ message, onClose }: AlertProps) => (
   <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4">
     <div className="w-full max-w-sm rounded-lg bg-white p-6 text-center shadow-xl">
       <p className="text-lg text-slate-800">{message}</p>
@@ -19,7 +21,7 @@ const AlertPopup = ({ message, onClose }) => (
 type Errors = Partial<Record<"correo" | "password", string>>;
 
 export default function Login() {
-  const { login, loading } = useAuth();
+  const { login, loading, user } = useAuth();
   const nav = useNavigate();
 
   const [correo, setCorreo] = useState("");
@@ -46,6 +48,19 @@ export default function Login() {
     return false;
   };
 
+  const redirectByRole = (rol: 1 | 2 | 3) => {
+    if (rol === 1) {
+      // Admin
+      nav("/mod/usuarios", { replace: true });
+    } else if (rol === 2) {
+      // Moderador
+      nav("/publicaciones", { replace: true });
+    } else {
+      // Residente
+      nav("/publicaciones", { replace: true });
+    }
+  };
+
   const handleSubmit = async (e: FormEvent) => {
     e.preventDefault();
     setAlertMessage("");
@@ -53,8 +68,9 @@ export default function Login() {
     if (!validate()) return;
 
     try {
-      await login(correo, password);
-      nav("/dashboard");
+      const data = await login(correo, password); // ahora devuelve LoginResp
+      const rol = data?.user?.rol_usuario_id ?? user?.rol_usuario_id ?? 3;
+      redirectByRole(rol as 1 | 2 | 3);
     } catch (e: any) {
       const msg =
         e?.response?.data?.detail ||
@@ -67,10 +83,7 @@ export default function Login() {
   return (
     <section className="relative">
       {alertMessage && (
-        <AlertPopup
-          message={alertMessage}
-          onClose={() => setAlertMessage("")}
-        />
+        <AlertPopup message={alertMessage} onClose={() => setAlertMessage("")} />
       )}
 
       <div
@@ -82,13 +95,12 @@ export default function Login() {
 
       <div className="min-h-[calc(100vh-64px)] grid place-items-center px-4 py-8">
         <div className="w-full max-w-4xl overflow-hidden rounded-2xl bg-white shadow-2xl md:grid md:grid-cols-2">
-          
-          {/* --- CAMBIOS AQUÍ --- */}
+          {/* Panel lateral */}
           <div className="hidden flex-col items-center justify-center bg-indigo-600 p-12 text-center md:flex">
-            <img 
-              src="/logo-telocambio.png" 
-              alt="Logo TeLoCambio" 
-              className="w-70" // 1. MÁS GRANDE (w-40) y 2. EN COLORES (sin 'invert brightness-0')
+            <img
+              src="/logo-telocambio.png"
+              alt="Logo TeLoCambio"
+              className="w-40"
             />
             <h2 className="mt-6 text-2xl font-bold text-white">
               Bienvenido de vuelta
@@ -97,13 +109,11 @@ export default function Login() {
               Accede a tu comunidad para descubrir nuevas oportunidades de intercambio.
             </p>
           </div>
-          {/* --- FIN DE LOS CAMBIOS --- */}
 
+          {/* Formulario */}
           <div className="p-8">
             <h2 className="text-2xl font-bold text-slate-900">Inicia sesión</h2>
-            <p className="mb-6 text-slate-600">
-              Ingresa tus credenciales para continuar
-            </p>
+            <p className="mb-6 text-slate-600">Ingresa tus credenciales para continuar</p>
 
             <form className="space-y-4" onSubmit={handleSubmit} noValidate>
               <div className="space-y-1">
@@ -145,14 +155,9 @@ export default function Login() {
                 </Link>
               </div>
               <div className="mt-2">
-                <Link
-                  to="#"
-                  onClick={(e) => e.preventDefault()}
-                  className="font-medium text-slate-400 cursor-not-allowed"
-                  aria-disabled="true"
-                >
-                 {/* --- ¿Olvidó su clave? --- */} 
-                </Link>
+                <span className="font-medium text-slate-400">
+                  {/* En el futuro: ¿Olvidó su clave? */}
+                </span>
               </div>
             </div>
           </div>

@@ -95,6 +95,8 @@ export type Publicacion = {
   // NUEVO: contadores (si el backend los incluye)
   ofertas_count_total?: number;
   ofertas_count_pendientes?: number;
+
+  bloqueada?: boolean; 
 };
 
 export type PublicacionListItem = {
@@ -103,7 +105,7 @@ export type PublicacionListItem = {
   categoria_id: number;
   tipo_publicacion_id: number;
   condicion_publicacion_id: number;
-  estado_publicacion_id: number;
+  estado_publicacion_id: 1 | 2 | 3; 
   creada_en: string;
   actualizada_en: string;
   primera_imagen?: string | null;
@@ -111,6 +113,7 @@ export type PublicacionListItem = {
   // NUEVO: contadores (opcionales)
   ofertas_count_total?: number;
   ofertas_count_pendientes?: number;
+  bloqueada?: boolean;
 };
 
 export type PageMeta = {
@@ -120,10 +123,24 @@ export type PageMeta = {
 };
 
 /** ====== Intercambios (Sprint 3) ====== */
+export type IntercambioCounterparty = {
+  id: number;
+  nombre: string | null;
+  apellidos: string | null;
+  telefono: string | null;
+  // ahora viene un objeto vivienda (no solo el id)
+  vivienda: {
+    torre: string | null;
+    direccion_texto: string | null;
+    numero: string | null;
+  } | null;
+};
+
 export type Intercambio = {
   id: number;
   comunidad_id: number;
-  estado_intercambio_id: 1 | 2 | 3; // 1=Pendiente, 2=Finalizado, 3=Cancelado
+  // incluye el estado 4 = Aceptado (el front ya lo usa)
+  estado_intercambio_id: 1 | 2 | 3 | 4; // 1=Pendiente, 2=Finalizado, 3=Cancelado, 4=Aceptado
   solicitante_usuario_id: number;
   receptor_usuario_id: number;
   publicacion_solicitada_id: number;
@@ -133,6 +150,15 @@ export type Intercambio = {
   // API expone alias (DRF mapea desde creado_en/actualizado_en)
   creada_en: string;
   actualizada_en: string;
+
+  // ✅ NUEVO: banderas de confirmación que envía el detalle
+  // - confirmo_solicitada: confirmó el DUEÑO de la PUBLICACIÓN SOLICITADA (receptor)
+  // - confirmo_ofrecida:  confirmó el DUEÑO de la PUBLICACIÓN OFRECIDA (solicitante)
+  confirmo_solicitada?: boolean;
+  confirmo_ofrecida?: boolean;
+
+  // Datos de contraparte para coordinar
+  counterparty?: IntercambioCounterparty | null;
 };
 
 export type IntercambioListResponse = {
@@ -140,3 +166,39 @@ export type IntercambioListResponse = {
   meta?: PageMeta;
 };
 
+// ===== Notificaciones =====
+export type NotificationType =
+  | "OFERTA_RECIBIDA"
+  | "OFERTA_ACEPTADA"
+  | "INTERCAMBIO_MARCADO_REALIZADO"
+  | "INTERCAMBIO_FINALIZADO_PENDIENTE_VALORACION";
+
+export type Notification = {
+  id: number;
+  tipo: NotificationType;
+  titulo: string;
+  mensaje: string;
+  intercambio_id?: number | null;
+  publicacion_id?: number | null;
+  link_url?: string | null;
+  payload?: Record<string, any>;
+  creada_en: string;
+  leida_en?: string | null;
+};
+
+// Perfil público
+export type UserPublic = {
+  id: number;
+  nombre?: string;
+  apellidos?: string;
+  telefono?: string | null;
+  promedio_rating?: number | null;
+  cantidad_ratings?: number | null;
+  intercambios_realizados?: number;
+  publicaciones_activas?: number;
+  ultimas_valoraciones?: Array<{
+    puntaje: number;
+    comentario?: string | null;
+    creado_en?: string;
+  }>;
+};

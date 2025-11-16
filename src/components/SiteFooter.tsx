@@ -39,7 +39,7 @@ export default function SiteFooter() {
             <p className="mt-3 text-sm text-slate-600">Déjanos tu correo para enterarte de mejoras y lanzamientos.</p>
             <form className="mt-4 flex gap-2">
               <input type="email" placeholder="tu@correo.cl" className="input h-10" />
-              <button className="btn-primary h-10 rounded-xl">Suscribirme</button>
+              <button className="btn bg-white text-blue-500 border border-blue-500 hover:bg-blue-500 hover:text-white transition-colors h-10 rounded-xl">Suscribirme</button>
             </form>
           </div>
         </div>

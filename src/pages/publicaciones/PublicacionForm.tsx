@@ -1,4 +1,3 @@
-// src/pages/publicaciones/PublicacionForm.tsx
 import { useEffect, useState } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 import Spinner from "../../components/Spinner";
@@ -25,6 +24,8 @@ type GalleryItem = {
   posicion?: number;
 };
 
+type FieldErrors = Partial<Record<"titulo" | "categoria_id", string>>;
+
 export default function PublicacionForm() {
   const { id } = useParams();
   const editing = Boolean(id);
@@ -46,10 +47,30 @@ export default function PublicacionForm() {
     condicion_publicacion_id: 1,
   });
 
+  const [fErr, setFErr] = useState<FieldErrors>({});
   const [images, setImages] = useState<GalleryItem[]>([]);
 
   function setField<K extends keyof typeof form>(k: K, v: (typeof form)[K]) {
     setForm((f) => ({ ...f, [k]: v }));
+    // validación inmediata de campos clave
+    if (k === "titulo") {
+      const t = String(v).trim();
+      setFErr((prev) => ({
+        ...prev,
+        titulo: !t
+          ? "El título es obligatorio."
+          : t.length < 3
+          ? "Mínimo 3 caracteres."
+          : undefined,
+      }));
+    }
+    if (k === "categoria_id") {
+      const n = Number(v);
+      setFErr((prev) => ({
+        ...prev,
+        categoria_id: n ? undefined : "Selecciona una categoría.",
+      }));
+    }
   }
 
   async function load() {
@@ -64,17 +85,15 @@ export default function PublicacionForm() {
       if (editing && id) {
         const pub = await getPublicacion(Number(id));
 
-        // ------- GUARDIA DE PERMISOS (cliente) -------
+        // Guardia de permisos (cliente)
         const esOwner = !!user && pub.propietario_usuario_id === user.id;
-        const esMod = !!user && (user.rol_usuario_id === 1 || user.rol_usuario_id === 2);
+        const esMod =
+          !!user && (user.rol_usuario_id === 1 || user.rol_usuario_id === 2);
         if (!esOwner && !esMod) {
-          // No permitir ver/editar si no es dueño ni moderador
           setErr("No estás autorizado para editar esta publicación.");
-          // Redirige y corta el flujo
           nav("/publicaciones", { replace: true });
           return;
         }
-        // --------------------------------------------
 
         setForm({
           categoria_id: pub.categoria_id,
@@ -110,19 +129,11 @@ export default function PublicacionForm() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [id]);
 
-  /**
-   * Persiste el estado visual EXACTO del componente `images`:
-   * - Sube primero los `file` nuevos y obtiene sus URLs.
-   * - Reemplaza, en el MISMO orden del array `images`, los items con `file` por las URLs subidas.
-   * - Llama a `setImagenes(pubId, payload)` con la lista combinada final (máx 4) y sus posiciones.
-   *   (Si queda vacío, enviamos [], para que el backend elimine todas en DB y bucket.)
-   */
   async function persistImages(pubId: number) {
     const current = images.slice(0, 4);
-
-    // 1) Identifica archivos nuevos
     const fileIndices: number[] = [];
     const filesToUpload: File[] = [];
+
     current.forEach((it, idx) => {
       if (it.file) {
         fileIndices.push(idx);
@@ -130,7 +141,6 @@ export default function PublicacionForm() {
       }
     });
 
-    // 2) Sube los nuevos (si hay) y captura posible `info` del backend
     const uploadedUrlsByIndex: Record<number, string> = {};
     if (filesToUpload.length > 0) {
       const res = await uploadImagenesArchivo(pubId, filesToUpload);
@@ -142,7 +152,6 @@ export default function PublicacionForm() {
       });
     }
 
-    // 3) Construye el arreglo final respetando orden visual
     const finalOrdered: { url: string; posicion: number }[] = current
       .map((it, idx) => {
         const url = it.file ? uploadedUrlsByIndex[idx] : it.url || "";
@@ -150,8 +159,17 @@ export default function PublicacionForm() {
       })
       .filter((x) => !!x.url);
 
-    // 4) Persistir SIEMPRE
     await setImagenes(pubId, finalOrdered);
+  }
+
+  function validateAll(): boolean {
+    const e: FieldErrors = {};
+    const t = form.titulo.trim();
+    if (!t) e.titulo = "El título es obligatorio.";
+    else if (t.length < 3) e.titulo = "Mínimo 3 caracteres.";
+    if (!form.categoria_id) e.categoria_id = "Selecciona una categoría.";
+    setFErr(e);
+    return Object.keys(e).length === 0;
   }
 
   async function onSubmit(e: React.FormEvent) {
@@ -161,8 +179,7 @@ export default function PublicacionForm() {
       setErr(null);
       setInfo(null);
 
-      if (!form.titulo.trim()) throw new Error("El título es obligatorio.");
-      if (!form.categoria_id) throw new Error("Selecciona una categoría.");
+      if (!validateAll()) return;
 
       let pub: Publicacion;
       if (!editing) {
@@ -188,100 +205,73 @@ export default function PublicacionForm() {
   }
 
   if (loading) {
+    const bgUrl = "/bg-publicaciones.png";
     return (
-      <div className="py-16">
-        <Spinner />
+      <div className="relative min-h-screen antialiased">
+        <div
+          className="absolute inset-0 -z-10 bg-cover bg-center"
+          style={{ backgroundImage: `url('${bgUrl}')` }}
+        />
+        <div className="absolute inset-0 -z-10 bg-gradient-to-b from-slate-900/45 via-slate-900/10 to-slate-900/55" />
+        <div className="flex items-center justify-center min-h-screen">
+          <Spinner />
+        </div>
       </div>
     );
   }
 
+  const bgUrl = "/bg-publicaciones.png";
+
   return (
-    <div className="max-w-3xl mx-auto px-4 sm:px-6 lg:px-8 py-6 relative">
-      {/* Overlay al guardar */}
-      {saving && (
-        <div className="absolute inset-0 bg-white/60 backdrop-blur-[1px] z-10 flex items-center justify-center rounded-xl">
-          <Spinner />
-        </div>
-      )}
+    <div className="relative min-h-screen antialiased">
+      {/* Fondo igual que PublicacionesList */}
+      <div
+        className="absolute inset-0 -z-10 bg-cover bg-center"
+        style={{ backgroundImage: `url('${bgUrl}')` }}
+      />
+      <div className="absolute inset-0 -z-10 bg-gradient-to-b from-slate-900/45 via-slate-900/10 to-slate-900/55" />
 
-      <h1 className="text-2xl font-bold mb-4">
-        {editing ? "Editar publicación" : "Nueva publicación"}
-      </h1>
+      {/* Contenedor principal */}
+      <div className="mx-auto px-4 sm:px-6 lg:px-8 2xl:px-0 py-10 w-full max-w-[1600px]">
+        {/* 👉 Card ahora con ancho limitado y centrado */}
+        <div className="mx-auto w-full max-w-4xl rounded-2xl bg-white/95 shadow-2xl ring-1 ring-black/5 p-6 md:p-8">
+          {/* HEADER */}
+          <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4 mb-6">
+            <div>
+              <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-indigo-500">
+                {editing ? "EDICIÓN DE PUBLICACIÓN" : "NUEVA PUBLICACIÓN"}
+              </p>
+              <h1 className="mt-1 text-2xl sm:text-3xl font-extrabold tracking-tight text-slate-900 flex items-center gap-2">
+                {editing ? "Editar publicación ✏️" : "Crear nueva publicación ✨"}
+              </h1>
+              <p className="mt-1 text-sm text-slate-600">
+                Completa los datos de tu producto o servicio.{" "}
+                <span className="font-medium text-slate-800">
+                  Un buen título, descripción clara e imágenes de calidad
+                </span>{" "}
+                aumentan las probabilidades de concretar un trueque.
+              </p>
+            </div>
 
-      {err && <AlertErr>{err}</AlertErr>}
-      {info && (
-        <div className="mt-3 text-sm text-blue-700 bg-blue-50 border border-blue-200 rounded-md p-3">
-          {info}
-        </div>
-      )}
-
-      <form
-        onSubmit={onSubmit}
-        className="bg-white rounded-2xl shadow-sm border p-4 sm:p-6 space-y-6"
-      >
-        {/* ========================== Campos básicos ========================== */}
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-          <div>
-            <label className="block text-sm text-gray-600 mb-1">Título *</label>
-            <input
-              value={form.titulo}
-              onChange={(e) => setField("titulo", e.target.value)}
-              className="w-full rounded-lg border-gray-300 bg-white"
-              maxLength={120}
-              disabled={saving}
-            />
-            <p className="text-xs text-gray-400 mt-1">3–120 caracteres.</p>
-          </div>
-
-          <div>
-            <label className="block text-sm text-gray-600 mb-1">Categoría *</label>
-            <select
-              value={form.categoria_id}
-              onChange={(e) => setField("categoria_id", Number(e.target.value))}
-              className="w-full rounded-lg border-gray-300 bg-white"
-              disabled={saving}
+            {/* 👉 Botón azul con el mismo efecto que los otros */}
+            <button
+              type="button"
+              onClick={() => nav("/publicaciones")}
+              className="inline-flex items-center justify-center rounded-xl px-4 py-2 text-sm font-semibold
+                        bg-blue-600 text-white border border-blue-600
+                        transition-all duration-200
+                        hover:bg-white hover:text-blue-600 hover:border-blue-600
+                        whitespace-nowrap min-w-[180px]"
             >
-              <option value={0}>Selecciona…</option>
-              {cats.map((c) => (
-                <option key={c.id} value={c.id}>
-                  {c.nombre}
-                </option>
-              ))}
-            </select>
-          </div>
-
-          <div>
-            <label className="block text-sm text-gray-600 mb-1">Tipo</label>
-            <select
-              value={form.tipo_publicacion_id}
-              onChange={(e) => setField("tipo_publicacion_id", Number(e.target.value))}
-              className="w-full rounded-lg border-gray-300 bg-white"
-              disabled={saving}
-            >
-              <option value={1}>Servicio</option>
-              <option value={2}>Producto</option>
-              <option value={3}>Regalo</option>
-            </select>
-          </div>
-
-          <div>
-            <label className="block text-sm text-gray-600 mb-1">Condición</label>
-            <select
-              value={form.condicion_publicacion_id}
-              onChange={(e) => setField("condicion_publicacion_id", Number(e.target.value))}
-              className="w-full rounded-lg border-gray-300 bg-white"
-              disabled={saving}
-            >
-              <option value={1}>Nuevo</option>
-              <option value={2}>Usado</option>
-              <option value={3}>Malo</option>
-            </select>
+              ← Ver publicaciones
+            </button>
           </div>
 
           {editing && estadoActual != null && (
-            <div className="md:col-span-2">
-              <span className="inline-block text-xs px-2 py-1 rounded bg-slate-100 text-slate-700">
-                Estado actual:{" "}
+            <div className="mb-4 inline-flex items-center gap-2 rounded-full bg-slate-50 border border-slate-200 px-3 py-1.5 text-xs text-slate-700">
+              <span>📌</span>
+              <span className="font-medium">Estado actual:</span>
+              <span className="font-semibold">
                 {estadoActual === ESTADO.ACTIVA
                   ? "Activa"
                   : estadoActual === ESTADO.OCULTA
@@ -290,52 +280,216 @@ export default function PublicacionForm() {
               </span>
             </div>
           )}
-        </div>
 
-        {/* ========================== Descripción ========================== */}
-        <div>
-          <label className="block text-sm text-gray-600 mb-1">Descripción</label>
-          <textarea
-            value={form.descripcion}
-            onChange={(e) => setField("descripcion", e.target.value)}
-            rows={5}
-            maxLength={2000}
-            className="w-full rounded-lg border-gray-300 bg-white"
-            disabled={saving}
-          />
-          <p className="text-xs text-gray-400 mt-1">0–2000 caracteres.</p>
-        </div>
+          {err && <AlertErr>{err}</AlertErr>}
 
-        {/* ========================== Imágenes ========================== */}
-        <div className="rounded-xl bg-blue-50 p-4 border border-blue-100">
-          <div className="flex items-center justify-between mb-2">
-            <h2 className="font-semibold">Imágenes (máx. 4)</h2>
-            {saving && (
-              <span className="text-xs text-blue-700 bg-blue-100 px-2 py-0.5 rounded">
-                Guardando...
-              </span>
-            )}
-          </div>
-          <ImageGalleryEditor images={images} onChange={setImages} />
-          <p className="text-xs text-amber-700 bg-amber-50 border border-amber-200 rounded-md p-2 mt-3">
-            Consejo: arrastra para cambiar el orden; la imagen #1 será la portada.
-          </p>
-        </div>
+          {info && (
+            <div className="mt-3 mb-4 text-sm text-blue-800 bg-blue-50 border border-blue-200 rounded-lg px-3 py-2">
+              {info}
+            </div>
+          )}
 
-        <div className="pt-2 flex items-center justify-end gap-2">
-          <button
-            type="button"
-            className="btn btn-outline"
-            onClick={() => nav(-1)}
-            disabled={saving}
-          >
-            Cancelar
-          </button>
-          <button className="btn btn-primary" type="submit" disabled={saving}>
-            {editing ? "Guardar cambios" : "Crear publicación"}
-          </button>
+          {/* FORMULARIO */}
+          <form onSubmit={onSubmit} className="space-y-6 mt-4">
+            {/* Campos básicos */}
+            <section className="rounded-2xl border border-slate-200 bg-slate-50/60 p-4 sm:p-5">
+              <h2 className="text-sm font-semibold text-slate-900 flex items-center gap-2 mb-3">
+                🧾 Datos de la publicación
+              </h2>
+
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div>
+                  <label className="block text-xs font-semibold text-slate-700 mb-1">
+                    Título de la publicación *
+                  </label>
+                  <input
+                    value={form.titulo}
+                    onChange={(e) => setField("titulo", e.target.value)}
+                    onBlur={() => setField("titulo", form.titulo)}
+                    className={`w-full rounded-lg bg-white border text-sm px-3 py-2 
+                      ${
+                        fErr.titulo
+                          ? "border-red-300 focus:ring-2 focus:ring-red-300"
+                          : "border-slate-300 focus:ring-2 focus:ring-blue-400"
+                      } focus:outline-none`}
+                    maxLength={120}
+                    disabled={saving}
+                    placeholder="Ej: Bicicleta de montaña, clases de inglés, servicio de peluquería…"
+                  />
+                  <div className="mt-1 flex items-center justify-between">
+                    <p className="text-xs text-slate-400">
+                      Entre 3 y 120 caracteres.
+                    </p>
+                    {fErr.titulo && (
+                      <span className="text-xs text-red-700 bg-red-50 border border-red-200 px-2 py-0.5 rounded">
+                        {fErr.titulo}
+                      </span>
+                    )}
+                  </div>
+                </div>
+
+                <div>
+                  <label className="block text-xs font-semibold text-slate-700 mb-1">
+                    Categoría *
+                  </label>
+                  <select
+                    value={form.categoria_id}
+                    onChange={(e) =>
+                      setField("categoria_id", Number(e.target.value))
+                    }
+                    onBlur={() => setField("categoria_id", form.categoria_id)}
+                    className={`w-full rounded-lg bg-white border text-sm px-3 py-2 
+                      ${
+                        fErr.categoria_id
+                          ? "border-red-300 focus:ring-2 focus:ring-red-300"
+                          : "border-slate-300 focus:ring-2 focus:ring-blue-400"
+                      } focus:outline-none`}
+                    disabled={saving}
+                  >
+                    <option value={0}>Selecciona una categoría…</option>
+                    {cats.map((c) => (
+                      <option key={c.id} value={c.id}>
+                        {c.nombre}
+                      </option>
+                    ))}
+                  </select>
+                  {fErr.categoria_id && (
+                    <div className="mt-1 flex justify-end">
+                      <span className="text-xs text-red-700 bg-red-50 border border-red-200 px-2 py-0.5 rounded">
+                        {fErr.categoria_id}
+                      </span>
+                    </div>
+                  )}
+                </div>
+
+                <div>
+                  <label className="block text-xs font-semibold text-slate-700 mb-1">
+                    Tipo de publicación
+                  </label>
+                  <select
+                    value={form.tipo_publicacion_id}
+                    onChange={(e) =>
+                      setField(
+                        "tipo_publicacion_id",
+                        Number(e.target.value)
+                      )
+                    }
+                    className="w-full rounded-lg bg-white border border-slate-300 text-sm px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-400"
+                    disabled={saving}
+                  >
+                    <option value={1}>Servicio</option>
+                    <option value={2}>Producto</option>
+                    <option value={3}>Regalo</option>
+                  </select>
+                </div>
+
+                <div>
+                  <label className="block text-xs font-semibold text-slate-700 mb-1">
+                    Condición del producto/servicio
+                  </label>
+                  <select
+                    value={form.condicion_publicacion_id}
+                    onChange={(e) =>
+                      setField(
+                        "condicion_publicacion_id",
+                        Number(e.target.value)
+                      )
+                    }
+                    className="w-full rounded-lg bg-white border border-slate-300 text-sm px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-400"
+                    disabled={saving}
+                  >
+                    <option value={1}>Nuevo</option>
+                    <option value={2}>Usado</option>
+                    <option value={3}>Malo</option>
+                  </select>
+                </div>
+              </div>
+            </section>
+
+            {/* Descripción */}
+            <section className="rounded-2xl border border-slate-200 bg-slate-50/60 p-4 sm:p-5">
+              <h2 className="text-sm font-semibold text-slate-900 flex items-center gap-2 mb-3">
+                ✍️ Descripción
+              </h2>
+              <label className="block text-xs font-semibold text-slate-700 mb-1">
+                Detalles de la publicación
+              </label>
+              <textarea
+                value={form.descripcion}
+                onChange={(e) => setField("descripcion", e.target.value)}
+                rows={5}
+                maxLength={2000}
+                className="w-full rounded-lg bg-white border border-slate-300 text-sm px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-400"
+                disabled={saving}
+                placeholder="Cuenta brevemente en qué consiste, estado real, condiciones del trueque, si tiene accesorios incluidos, etc."
+              />
+              <p className="text-xs text-slate-400 mt-1">
+                Campo opcional. Máximo 2000 caracteres.
+              </p>
+            </section>
+
+            {/* Imágenes */}
+            <section
+              id="gallery-card"
+              className="relative overflow-hidden rounded-2xl bg-blue-50 p-4 sm:p-5 border border-blue-100"
+            >
+              <div className="flex items-center justify-between mb-2">
+                <h2 className="text-sm font-semibold text-slate-900 flex items-center gap-2">
+                  📸 Imágenes de la publicación
+                  <span className="text-xs font-normal text-slate-500">
+                    (máx. 4)
+                  </span>
+                </h2>
+                {saving && (
+                  <span className="text-xs text-blue-800 bg-blue-100 px-2 py-0.5 rounded-full">
+                    Guardando…
+                  </span>
+                )}
+              </div>
+
+              <p className="text-xs text-slate-600 mb-3">
+                Sube entre <span className="font-semibold">1 y 4 fotos</span>.
+                Arrástralas para ordenar; la primera será la portada que verá la
+                comunidad.
+              </p>
+
+              <ImageGalleryEditor images={images} onChange={setImages} />
+
+              <p className="text-xs text-amber-700 bg-amber-50 border border-amber-200 rounded-md p-2 mt-3">
+                Consejo: arrastra para cambiar el orden; la imagen #1 será la
+                portada.
+              </p>
+            </section>
+
+            {/* BOTONES */}
+            <div className="pt-2 flex items-center justify-end gap-2">
+              <button
+                type="button"
+                onClick={() => nav(-1)}
+                disabled={saving}
+                className="inline-flex items-center justify-center rounded-xl px-4 py-2 text-sm font-semibold 
+                           bg-blue-600 text-white border border-blue-600 
+                           transition-all duration-200 
+                           hover:bg-white hover:text-blue-600 hover:border-blue-600
+                           disabled:cursor-not-allowed disabled:opacity-60"
+              >
+                ⬅️ Cancelar
+              </button>
+              <button
+                type="submit"
+                disabled={saving}
+                className="inline-flex items-center justify-center rounded-xl px-4 py-2 text-sm font-semibold 
+                           bg-blue-600 text-white border border-blue-600 
+                           transition-all duration-200 
+                           hover:bg-white hover:text-blue-600 hover:border-blue-600
+                           disabled:cursor-not-allowed disabled:opacity-60"
+              >
+                {editing ? "💾 Guardar cambios" : "✅ Crear publicación"}
+              </button>
+            </div>
+          </form>
         </div>
-      </form>
+      </div>
     </div>
   );
 }

@@ -9,10 +9,24 @@ export type UsuarioLite = {
   nombre: string;
   apellidos: string;
   telefono?: string | null;
-  rol_usuario_id: 1 | 2 | 3;     // 1=Admin,2=Moderador,3=Residente
-  estado_usuario_id: number;      // 1=Activo, 2=Susp
-  registrado_en?: string | null;  // ISO
-  actualizado_en?: string | null; // ISO
+  rol_usuario_id: 1 | 2 | 3;
+  estado_usuario_id: number;
+  registrado_en?: string | null;
+  actualizado_en?: string | null;
+};
+
+export type MeResponse = {
+  id: number;
+  correo: string;
+  nombre?: string;
+  apellidos?: string;
+  telefono?: string;
+  promedio_rating?: number;
+  cantidad_ratings?: number;
+  intercambios_realizados?: number;
+  publicaciones_activas?: number;
+  rol_usuario_id?: 1 | 2 | 3;
+  rol_nombre?: string | null;
 };
 
 export type UsuarioListResponse = {
@@ -51,3 +65,30 @@ export const UsuariosApi = {
     telefono?: string;
   }) => http.post("/usuarios/moderador", payload),
 };
+
+// ===== PERFIL =====
+
+// obtengo "yo" (datos del que está logeado)
+export async function getMe(): Promise<{
+  id: number;
+  correo: string;
+  nombre?: string;
+  apellidos?: string;
+  telefono?: string;
+}> {
+  return await http.get("/usuarios/me/");
+}
+
+// update "yo"
+export async function updateMe(payload: {
+  nombre?: string;
+  apellidos?: string;
+  telefono?: string;
+}): Promise<void> {
+  await http.patch("/usuarios/me/", payload);
+}
+
+// perfil público de otro usuario
+export async function getUsuarioPublico(id: number) {
+  return await http.get(`/usuarios/publico/${id}`);
+}

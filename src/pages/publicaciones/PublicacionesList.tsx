@@ -1,14 +1,12 @@
 // src/pages/publicaciones/PublicacionesList.tsx
 import { useEffect, useMemo, useState, useCallback, useRef } from "react";
 import { Link, useNavigate } from "react-router-dom";
-import Spinner from "../../components/Spinner";
 import { AlertErr } from "../../components/Alert";
 import ConfirmModal from "../../components/ConfirmModal";
 import PublicationCard from "../../components/PublicationCard";
 import {
   getCategorias,
   listPublicaciones,
-  patchEstado,
   toggleEstado,
   deletePublicacion,
 } from "../../services/publicaciones";
@@ -20,7 +18,7 @@ import type { Categoria, PublicacionListItem } from "../../types";
 const PAGE_SIZE = 12;
 const CACHE_KEY = "publicaciones_filtros_v1";
 
-type Orden = "recientes" | "alfabetico";
+type Orden = "recientes" | "alfabetico" | "ofertas_desc";
 
 // ==============================
 // HELPERS
@@ -56,6 +54,11 @@ function CardSkeleton() {
   );
 }
 
+// ——— Permisos locales UI (no mutar si realizada o bloqueada)
+function canMutate(item: PublicacionListItem): boolean {
+  return item.estado_publicacion_id !== 3 && !(item as any).bloqueada;
+}
+
 // ==============================
 // COMPONENTE PRINCIPAL
 // ==============================
@@ -76,10 +79,6 @@ export default function PublicacionesList() {
   const [mine, setMine] = useState(false);
   const [page, setPage] = useState(1);
 
-  // --- Selección múltiple ---
-  const [selectMode, setSelectMode] = useState(false);
-  const [selected, setSelected] = useState<Set<number>>(new Set());
-
   // --- Modal de confirmación de borrado ---
   const [confirm, setConfirm] = useState<{
     open: boolean;
@@ -95,8 +94,11 @@ export default function PublicacionesList() {
     loading: false,
   });
 
-  const searchRef = useRef<HTMLInputElement>(null);
-  const totalPaginas = useMemo(() => Math.max(1, Math.ceil(total / PAGE_SIZE)), [total]);
+  const searchRef = useRef<HTMLInputElement | null>(null);
+  const totalPaginas = useMemo(
+    () => Math.max(1, Math.ceil(total / PAGE_SIZE)),
+    [total]
+  );
 
   // ==============================
   // CARGA INICIAL + PERSISTENCIA
@@ -117,7 +119,10 @@ export default function PublicacionesList() {
   }, []);
 
   useEffect(() => {
-    localStorage.setItem(CACHE_KEY, JSON.stringify({ q, categoriaId, orden, mine }));
+    localStorage.setItem(
+      CACHE_KEY,
+      JSON.stringify({ q, categoriaId, orden, mine })
+    );
   }, [q, categoriaId, orden, mine]);
 
   // ==============================
@@ -142,9 +147,17 @@ export default function PublicacionesList() {
 
       setCategorias(normalizeCats(catsRaw));
       const { results, total } = normalizeList(listRaw);
-      setItems(results);
-      setTotal(total);
-      setSelected(new Set());
+
+      // En MODO MIS PUBLICACIONES: mostrar solo ACTIVAS u OCULTAS
+      let processed = results;
+      if (mine) {
+        processed = results.filter(
+          (r) => r.estado_publicacion_id === 1 || r.estado_publicacion_id === 2
+        );
+      }
+
+      setItems(processed);
+      setTotal(mine ? processed.length : total);
     } catch (e: any) {
       setErr(e?.message || "Error al cargar publicaciones.");
     } finally {
@@ -173,6 +186,14 @@ export default function PublicacionesList() {
   const onEdit = (id: number) => nav(`/publicaciones/${id}/editar`);
 
   const onToggleVisibility = async (item: PublicacionListItem) => {
+    if (!canMutate(item)) {
+      setErr(
+        item.estado_publicacion_id === 3
+          ? "Esta publicación está realizada y no permite cambios."
+          : "Esta publicación está bloqueada por un intercambio."
+      );
+      return;
+    }
     await toggleEstado(item);
     await load();
   };
@@ -192,49 +213,23 @@ export default function PublicacionesList() {
     });
   };
 
-  // ——— abrir modal para eliminar varias
-  const bulkDeleteAsk = () => {
-    if (selected.size === 0) return;
-    setConfirm({
-      open: true,
-      ids: Array.from(selected),
-      title: "Eliminar publicaciones",
-      description: `Esta acción es definitiva. Se eliminarán ${selected.size} publicaciones y sus imágenes asociadas.`,
-      loading: false,
-    });
-  };
-
-  // ——— confirmar (individual o masivo)
+  // ——— confirmar borrado
   const confirmDelete = async () => {
     try {
       setConfirm((c) => ({ ...c, loading: true }));
       await Promise.all(confirm.ids.map((id) => deletePublicacion(id)));
-      setConfirm({ open: false, ids: [], title: "", description: "", loading: false });
-      setSelected(new Set());
-      setSelectMode(false);
+      setConfirm({
+        open: false,
+        ids: [],
+        title: "",
+        description: "",
+        loading: false,
+      });
       await load();
     } catch (e: any) {
       setErr(e?.message || "No se pudo eliminar.");
       setConfirm((c) => ({ ...c, loading: false }));
     }
-  };
-
-  // --- Selección múltiple (activar/ocultar) ---
-  const toggleSelect = (id: number) => {
-    setSelected((prev) => {
-      const next = new Set(prev);
-      next.has(id) ? next.delete(id) : next.add(id);
-      return next;
-    });
-  };
-
-  const bulkChange = async (estado: 1 | 2) => {
-    if (selected.size === 0) return;
-    const ids = Array.from(selected);
-    await Promise.all(ids.map((id) => patchEstado(id, estado)));
-    setSelected(new Set());
-    setSelectMode(false);
-    load();
   };
 
   const clearFilters = () => {
@@ -248,240 +243,318 @@ export default function PublicacionesList() {
   };
 
   // ==============================
+  // CÁLCULOS DERIVADOS
+  // ==============================
+  const resumenMisPublicaciones = useMemo(() => {
+    if (!mine) return null;
+    const activas = items.filter((i) => i.estado_publicacion_id === 1).length;
+    const ocultas = items.filter((i) => i.estado_publicacion_id === 2).length;
+    return { activas, ocultas };
+  }, [mine, items]);
+
+  // ==============================
   // RENDER
   // ==============================
+  const bgUrl = "/bg-publicaciones.png";
+
+  const tituloPrincipal = mine ? "Mis publicaciones ✨" : "Publicaciones 📦";
+  const subtituloPrincipal = mine
+    ? "Administra tus publicaciones activas y ocultas. Aquí puedes editar, mostrar, ocultar o eliminar tus publicaciones de forma rápida y segura."
+    : "Explora y gestiona las publicaciones activas dentro de tu comunidad.";
+
   return (
-    <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6">
-      {/* ======= HEADER ======= */}
-      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between mb-4 gap-3">
-        <h1 className="text-2xl font-bold tracking-tight flex items-center gap-2">
-          📦 Publicaciones
-          {mine && (
-            <span className="text-xs text-blue-600 bg-blue-100 px-2 py-0.5 rounded-md">
-              Modo mis publicaciones
-            </span>
-          )}
-        </h1>
+    <div className="relative min-h-screen antialiased">
+      {/* Fondo */}
+      <div
+        className="absolute inset-0 -z-10 bg-cover bg-center"
+        style={{ backgroundImage: `url('${bgUrl}')` }}
+      />
+      <div className="absolute inset-0 -z-10 bg-gradient-to-b from-slate-900/45 via-slate-900/10 to-slate-900/55" />
 
-        <div className="flex items-center gap-3">
-          {mine && (
-            <button
-              className={`btn btn-outline ${selectMode ? "ring-2 ring-blue-400" : ""}`}
-              onClick={() => {
-                setSelectMode((v) => !v);
-                setSelected(new Set());
-              }}
-              title="Seleccionar varias para acciones en lote"
-            >
-              {selectMode ? "Cancelar selección" : "Seleccionar"}
-            </button>
-          )}
-          <Link
-            to="/publicaciones/nueva"
-            className="btn btn-primary inline-flex items-center px-4 py-2 rounded-xl bg-blue-600 text-white hover:bg-blue-700 shadow-sm"
-          >
-            Nueva publicación
-          </Link>
-        </div>
-      </div>
+      {/* Contenedor principal */}
+      <div className="mx-auto px-4 sm:px-6 lg:px-8 2xl:px-0 py-10 w-full max-w-[1600px]">
+        <div className="rounded-2xl bg-white/90 backdrop-blur-xl shadow-2xl ring-1 ring-black/5 p-6 md:p-8">
+          {/* HEADER */}
+          <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between mb-4">
+            <div>
+              <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-indigo-500">
+                {mine ? "Panel privado" : "Panel principal"}
+              </p>
+              <h1 className="mt-1 text-2xl sm:text-3xl font-extrabold tracking-tight text-slate-900 flex items-center gap-2">
+                {tituloPrincipal}
+              </h1>
+              <p className="mt-1 text-sm text-slate-600">{subtituloPrincipal}</p>
 
-      {/* ======= FILTROS ======= */}
-      <div className="rounded-2xl bg-blue-50 p-4 sm:p-5 mb-5 border border-blue-100">
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-3">
-          <div className="col-span-1 sm:col-span-2">
-            <label className="block text-sm text-gray-600 mb-1">Buscar</label>
-            <input
-              ref={searchRef}
-              value={q}
-              onChange={(e) => setQ(e.target.value)}
-              placeholder="Título o descripción…"
-              className="w-full rounded-xl border-gray-300 bg-white focus:outline-none focus:ring-2 focus:ring-blue-400"
-            />
-          </div>
+              {mine && resumenMisPublicaciones && (
+                <p className="mt-2 text-xs sm:text-sm">
+                  <span className="inline-flex items-center rounded-full bg-emerald-50 px-2 py-0.5 text-emerald-700 font-medium mr-2">
+                    ✅ Activas: {resumenMisPublicaciones.activas}
+                  </span>
+                  <span className="inline-flex items-center rounded-full bg-amber-50 px-2 py-0.5 text-amber-700 font-medium">
+                    👁️‍🗨️ Ocultas: {resumenMisPublicaciones.ocultas}
+                  </span>
+                </p>
+              )}
+            </div>
 
-          <div>
-            <label className="block text-sm text-gray-600 mb-1">Categoría</label>
-            <select
-              value={categoriaId ?? ""}
-              onChange={(e) => setCategoriaId(e.target.value ? Number(e.target.value) : undefined)}
-              className="w-full rounded-xl border-gray-300 bg-white focus:outline-none focus:ring-2 focus:ring-blue-400"
-            >
-              <option value="">Todas</option>
-              {categorias.map((c) => (
-                <option key={c.id} value={c.id}>
-                  {c.nombre}
-                </option>
-              ))}
-            </select>
-          </div>
-
-          <div>
-            <label className="block text-sm text-gray-600 mb-1">Orden</label>
-            <select
-              value={orden}
-              onChange={(e) => setOrden(e.target.value as Orden)}
-              className="w-full rounded-xl border-gray-300 bg-white focus:outline-none focus:ring-2 focus:ring-blue-400"
-            >
-              <option value="recientes">Más recientes</option>
-              <option value="alfabetico">Alfabético</option>
-            </select>
-          </div>
-
-          <div className="flex flex-col justify-end">
-            <label className="inline-flex items-center gap-2 text-sm select-none">
-              <input
-                type="checkbox"
-                className="rounded border-gray-300"
-                checked={mine}
-                onChange={(e) => {
-                  setMine(e.target.checked);
-                  setPage(1);
-                }}
-              />
-              <span>Mis publicaciones</span>
-            </label>
-            <button
-              type="button"
-              onClick={clearFilters}
-              className="text-xs text-blue-600 mt-1 hover:underline self-start"
-            >
-              Limpiar filtros
-            </button>
-          </div>
-        </div>
-      </div>
-
-      {/* ======= ERRORES ======= */}
-      {err && <AlertErr>{err}</AlertErr>}
-
-      {/* ======= ACCIONES MASIVAS ======= */}
-      {mine && selectMode && selected.size > 0 && (
-        <div className="sticky top-2 z-10 mb-3 rounded-xl border bg-white shadow flex flex-wrap items-center gap-3 p-3">
-          <span className="text-sm text-slate-600">
-            Seleccionadas: <b>{selected.size}</b>
-          </span>
-          <div className="flex items-center gap-2 ml-auto">
-            <button
-              className="px-3 py-1.5 rounded-lg bg-emerald-600 text-white hover:bg-emerald-700"
-              onClick={() => bulkChange(1)}
-            >
-              Activar
-            </button>
-            <button
-              className="px-3 py-1.5 rounded-lg bg-amber-500 text-white hover:bg-amber-600"
-              onClick={() => bulkChange(2)}
-            >
-              Ocultar
-            </button>
-            <button
-              className="px-3 py-1.5 rounded-lg bg-red-600 text-white hover:bg-red-700"
-              onClick={bulkDeleteAsk}
-            >
-              Eliminar
-            </button>
-            <button
-              className="btn btn-outline btn-sm"
-              onClick={() => {
-                setSelected(new Set());
-                setSelectMode(false);
-              }}
-            >
-              Cancelar
-            </button>
-          </div>
-        </div>
-      )}
-
-      {/* ======= LISTADO ======= */}
-      {loading ? (
-        <div className="grid grid-cols-2 md:grid-cols-3 xl:grid-cols-4 gap-5">
-          {Array.from({ length: 8 }).map((_, i) => (
-            <CardSkeleton key={i} />
-          ))}
-        </div>
-      ) : items.length === 0 ? (
-        <div className="py-20 text-center">
-          <div className="mx-auto w-24 h-24 rounded-full bg-blue-50 flex items-center justify-center mb-4">
-            <span className="text-3xl">🕊️</span>
-          </div>
-          <h2 className="text-lg font-semibold mb-1">No se encontraron publicaciones</h2>
-          <p className="text-gray-500 mb-4">Intenta ajustar los filtros o crea una nueva publicación.</p>
-          <Link className="btn btn-primary" to="/publicaciones/nueva">
-            Crear publicación
-          </Link>
-        </div>
-      ) : (
-        <>
-          <div className="grid grid-cols-2 md:grid-cols-3 xl:grid-cols-4 gap-5">
-            {items.map((it) => (
-              <div key={it.id} className="relative transition-all">
-                {mine && selectMode && (
-                  <label className="absolute top-2 right-2 z-10">
-                    <input
-                      type="checkbox"
-                      className="h-5 w-5 accent-blue-600"
-                      checked={selected.has(it.id)}
-                      onChange={() => toggleSelect(it.id)}
-                    />
-                  </label>
-                )}
-                <PublicationCard
-                  item={{
-                    ...it,
-                    primera_imagen: it.primera_imagen ? `${it.primera_imagen}?t=${Date.now()}` : null,
+            <div className="flex flex-wrap items-center gap-3 justify-end">
+              {mine && (
+                <button
+                  type="button"
+                  onClick={() => {
+                    setMine(false);
+                    setPage(1);
                   }}
-                  showActions={mine && !selectMode}
-                  onEdit={onEdit}
-                  onToggleVisibility={onToggleVisibility}
-                  onDelete={onDelete}
-                  highlight={q.trim() || undefined}
-                />
-              </div>
-            ))}
+                  className="inline-flex items-center justify-center rounded-xl px-4 py-2 text-sm font-semibold 
+                             bg-white text-slate-800 border border-slate-300 
+                             hover:bg-slate-50 transition-all duration-200"
+                >
+                  ← Ver publicaciones de la comunidad
+                </button>
+              )}
+
+              {/* NUEVA PUBLICACIÓN – botón azul primario */}
+              <Link
+                to="/publicaciones/nueva"
+                className="inline-flex items-center justify-center rounded-xl px-4 py-2 text-sm font-semibold 
+                           bg-blue-600 text-white border border-blue-600 
+                           transition-all duration-200 
+                           hover:bg-white hover:text-blue-600 hover:border-blue-600"
+              >
+                Nueva publicación
+              </Link>
+            </div>
           </div>
 
-          {/* ======= PAGINACIÓN ======= */}
-          {totalPaginas > 1 && (
-            <div className="mt-8 flex items-center justify-center gap-3 flex-wrap">
-              <button
-                className="btn btn-outline px-3 py-1.5 rounded-lg border hover:bg-gray-50 disabled:opacity-50"
-                disabled={page <= 1}
-                onClick={() => setPage((p) => Math.max(1, p - 1))}
-              >
-                ⬅️ Anterior
-              </button>
+          {/* FILTROS – SOLO EN PANEL GENERAL (no en Mis publicaciones) */}
+          {!mine && (
+            <div className="mb-6 rounded-2xl border border-slate-200 bg-slate-50/80 p-4 sm:p-5">
+              {/* Cabecera del filtro */}
+              <div className="flex items-center gap-3 mb-4">
+                <div className="flex h-9 w-9 items-center justify-center rounded-full bg-blue-600 text-white shadow-md">
+                  🔍
+                </div>
+                <div>
+                  <p className="text-sm font-semibold text-slate-900">
+                    Busca y filtra publicaciones
+                  </p>
+                  <p className="text-xs text-slate-500">
+                    Usa el buscador, la categoría y el orden para encontrar más
+                    rápido lo que necesitas.
+                  </p>
+                </div>
+              </div>
 
-              <span className="text-sm text-gray-600">
-                Página <span className="font-semibold">{page}</span> de {totalPaginas}
-              </span>
+              {/* Contenido de filtros */}
+              <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-12 items-end">
+                {/* Buscar */}
+                <div className="xl:col-span-4 md:col-span-2">
+                  <label className="block text-xs font-semibold text-slate-600 mb-1">
+                    Buscar por título o descripción
+                  </label>
+                  <div className="relative">
+                    <span className="pointer-events-none absolute inset-y-0 left-3 flex items-center text-slate-400 text-sm">
+                      🔎
+                    </span>
+                    <input
+                      ref={searchRef}
+                      value={q}
+                      onChange={(e) => setQ(e.target.value)}
+                      placeholder="Ej: Bicicleta, libros, servicios…"
+                      className="w-full rounded-xl h-10 border border-slate-300 bg-white text-slate-900 placeholder-slate-400 text-sm 
+                                 pl-9 pr-3
+                                 focus:outline-none focus:ring-2 focus:ring-blue-400 focus:border-blue-400"
+                    />
+                  </div>
+                </div>
 
-              <button
-                className="btn btn-outline px-3 py-1.5 rounded-lg border hover:bg-gray-50 disabled:opacity-50"
-                disabled={page >= totalPaginas}
-                onClick={() => setPage((p) => Math.min(totalPaginas, p + 1))}
-              >
-                Siguiente ➡️
-              </button>
+                {/* Categoría */}
+                <div className="xl:col-span-3">
+                  <label className="block text-xs font-semibold text-slate-600 mb-1">
+                    Categoría
+                  </label>
+                  <select
+                    value={categoriaId ?? ""}
+                    onChange={(e) =>
+                      setCategoriaId(
+                        e.target.value ? Number(e.target.value) : undefined
+                      )
+                    }
+                    className="w-full rounded-xl h-10 border border-slate-300 bg-white text-slate-900 text-sm 
+                               px-3
+                               focus:outline-none focus:ring-2 focus:ring-blue-400 focus:border-blue-400"
+                  >
+                    <option value="">Todas</option>
+                    {categorias.map((c) => (
+                      <option key={c.id} value={c.id}>
+                        {c.nombre}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+
+                {/* Orden */}
+                <div className="xl:col-span-2">
+                  <label className="block text-xs font-semibold text-slate-600 mb-1">
+                    Orden
+                  </label>
+                  <select
+                    value={orden}
+                    onChange={(e) => setOrden(e.target.value as Orden)}
+                    className="w-full rounded-xl h-10 border border-slate-300 bg-white text-slate-900 text-sm 
+                               px-3
+                               focus:outline-none focus:ring-2 focus:ring-blue-400 focus:border-blue-400"
+                  >
+                    <option value="recientes">Más recientes</option>
+                    <option value="alfabetico">Alfabético</option>
+                    <option value="ofertas_desc">Más ofertas primero</option>
+                  </select>
+                </div>
+
+                {/* Botones – Mis publicaciones / Limpiar */}
+                <div className="xl:col-span-3 flex md:flex-row flex-col gap-2 items-stretch md:items-end">
+                  {/* MIS PUBLICACIONES – activa modo privado */}
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setMine(true);
+                      setPage(1);
+                    }}
+                    className="inline-flex items-center justify-center rounded-xl px-3 text-sm font-semibold h-10 border transition-all duration-200
+                               bg-blue-600 text-white border-blue-600 hover:bg-white hover:text-blue-600 hover:border-blue-600"
+                    title="Ver solo tus publicaciones"
+                  >
+                    Mis publicaciones
+                  </button>
+
+                  {/* LIMPIAR – mismo estilo azul */}
+                  <button
+                    type="button"
+                    onClick={clearFilters}
+                    className="inline-flex items-center justify-center rounded-xl px-3 text-sm font-semibold h-10 
+                               bg-blue-600 text-white border border-blue-600 
+                               transition-all duration-200 
+                               hover:bg-white hover:text-blue-600 hover:border-blue-600"
+                    title="Restablecer filtros"
+                  >
+                    Limpiar filtros
+                  </button>
+                </div>
+              </div>
             </div>
           )}
-        </>
-      )}
 
-      {/* ======= MODAL DE CONFIRMACIÓN ======= */}
-      <ConfirmModal
-        open={confirm.open}
-        title={confirm.title}
-        tone="danger"
-        confirmText={confirm.ids.length > 1 ? "Eliminar publicaciones" : "Eliminar publicación"}
-        cancelText="Cancelar"
-        disabled={confirm.loading}
-        onCancel={() =>
-          setConfirm({ open: false, ids: [], title: "", description: "", loading: false })
-        }
-        onConfirm={confirmDelete}
-      >
-        <p className="text-sm">{confirm.description}</p>
-      </ConfirmModal>
+          {/* ERRORES */}
+          {err && <AlertErr>{err}</AlertErr>}
+
+          {/* LISTADO */}
+          {loading ? (
+            <div className="grid grid-cols-2 md:grid-cols-3 xl:grid-cols-4 2xl:grid-cols-5 gap-5">
+              {Array.from({ length: 10 }).map((_, i) => (
+                <CardSkeleton key={i} />
+              ))}
+            </div>
+          ) : items.length === 0 ? (
+            <div className="py-20 text-center">
+              <div className="mx-auto w-24 h-24 rounded-full bg-blue-50 flex items-center justify-center mb-4">
+                <span className="text-3xl">{mine ? "📭" : "🕊️"}</span>
+              </div>
+              <h2 className="text-lg font-semibold mb-1">
+                {mine
+                  ? "Aún no tienes publicaciones activas u ocultas"
+                  : "No se encontraron publicaciones"}
+              </h2>
+              <p className="text-gray-500 mb-4">
+                {mine
+                  ? "Crea tu primera publicación para comenzar a intercambiar dentro de tu comunidad."
+                  : "Ajusta los filtros o crea una nueva publicación para comenzar."}
+              </p>
+              <Link
+                className="inline-flex items-center justify-center rounded-xl px-4 py-2 text-sm font-semibold 
+                           bg-blue-600 text-white border border-blue-600 
+                           transition-all duration-200 
+                           hover:bg-white hover:text-blue-600 hover:border-blue-600"
+                to="/publicaciones/nueva"
+              >
+                Crear publicación
+              </Link>
+            </div>
+          ) : (
+            <>
+              <div className="grid grid-cols-2 md:grid-cols-3 xl:grid-cols-4 2xl:grid-cols-5 gap-5">
+                {items.map((it) => (
+                  <div key={it.id} className="relative transition-all">
+                    <PublicationCard
+                      item={{
+                        ...it,
+                        // forzar refresco de thumbnail si se actualiza
+                        primera_imagen: it.primera_imagen
+                          ? `${it.primera_imagen}?t=${Date.now()}`
+                          : null,
+                      }}
+                      showActions={mine && canMutate(it)}
+                      onEdit={onEdit}
+                      onToggleVisibility={onToggleVisibility}
+                      onDelete={onDelete}
+                      highlight={!mine && q.trim() ? q.trim() : undefined}
+                    />
+                  </div>
+                ))}
+              </div>
+
+              {/* PAGINACIÓN */}
+              {totalPaginas > 1 && (
+                <div className="mt-8 flex items-center justify-center gap-3 flex-wrap">
+                  <button
+                    className="inline-flex items-center justify-center rounded-lg px-3 py-1.5 text-sm font-medium border border-slate-300 bg-white hover:bg-slate-50 disabled:opacity-50"
+                    disabled={page <= 1}
+                    onClick={() => setPage((p) => Math.max(1, p - 1))}
+                  >
+                    ⬅️ Anterior
+                  </button>
+
+                  <span className="text-sm text-gray-600">
+                    Página <span className="font-semibold">{page}</span> de{" "}
+                    {totalPaginas}
+                  </span>
+
+                  <button
+                    className="inline-flex items-center justify-center rounded-lg px-3 py-1.5 text-sm font-medium border border-slate-300 bg-white hover:bg-slate-50 disabled:opacity-50"
+                    disabled={page >= totalPaginas}
+                    onClick={() =>
+                      setPage((p) => Math.min(totalPaginas, p + 1))
+                    }
+                  >
+                    Siguiente ➡️
+                  </button>
+                </div>
+              )}
+            </>
+          )}
+
+          {/* MODAL ELIMINAR */}
+          <ConfirmModal
+            open={confirm.open}
+            title={confirm.title}
+            tone="danger"
+            confirmText="Eliminar publicación"
+            cancelText="Cancelar"
+            disabled={confirm.loading}
+            onCancel={() =>
+              setConfirm({
+                open: false,
+                ids: [],
+                title: "",
+                description: "",
+                loading: false,
+              })
+            }
+            onConfirm={confirmDelete}
+          >
+            <p className="text-sm">{confirm.description}</p>
+          </ConfirmModal>
+        </div>
+      </div>
     </div>
   );
 }

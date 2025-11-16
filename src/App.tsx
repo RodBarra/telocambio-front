@@ -1,7 +1,9 @@
+// src/App.tsx
 import { Navigate, Route, Routes } from "react-router-dom";
+import { useAuth } from "./context/AuthContext";
+
 import Login from "./pages/Login";
 import Register from "./pages/Register";
-import Dashboard from "./pages/Dashboard";
 import ProtectedRoute from "./components/ProtectedRoute";
 import Navbar from "./components/Navbar";
 
@@ -20,7 +22,22 @@ import ComoFunciona from "./pages/ComoFunciona";
 import Contacto from "./pages/Contacto";
 
 // marketplace
-import { PublicacionesList, PublicacionForm, PublicacionDetail } from "./pages/publicaciones";
+import {
+  PublicacionesList,
+  PublicacionForm,
+  PublicacionDetail,
+} from "./pages/publicaciones";
+
+// intercambios
+import IntercambioDetail from "./pages/intercambios/IntercambioDetail";
+import IntercambiosList from "./pages/intercambios/IntercambiosList";
+
+// PERFIL (estos son los REALES!)
+import MiPerfil from "./pages/perfil/MiPerfil";
+import PerfilPublico from "./pages/perfil/PerfilPublico";
+
+// Notificaciones
+import NotificationsPage from "./pages/notificaciones/NotificationsPage";
 
 function PrivateShell({ children }: { children: React.ReactNode }) {
   return (
@@ -42,6 +59,13 @@ function PublicShell({ children }: { children: React.ReactNode }) {
   );
 }
 
+function RoleHomeFallback() {
+  const { user } = useAuth();
+  if (!user) return <Navigate to="/login" replace />;
+  const target = user.rol_usuario_id === 1 ? "/mod/usuarios" : "/publicaciones";
+  return <Navigate to={target} replace />;
+}
+
 export default function App() {
   return (
     <Routes>
@@ -54,19 +78,7 @@ export default function App() {
       <Route path="/como-funciona" element={<PublicShell><ComoFunciona /></PublicShell>} />
       <Route path="/contacto" element={<PublicShell><Contacto /></PublicShell>} />
 
-      {/* privado */}
-      <Route
-        path="/dashboard"
-        element={
-          <ProtectedRoute>
-            <PrivateShell>
-              <Dashboard />
-            </PrivateShell>
-          </ProtectedRoute>
-        }
-      />
-
-      {/* Marketplace (todos los roles autenticados) */}
+      {/* Marketplace */}
       <Route
         path="/publicaciones"
         element={
@@ -103,6 +115,64 @@ export default function App() {
           <ProtectedRoute>
             <PrivateShell>
               <PublicacionForm />
+            </PrivateShell>
+          </ProtectedRoute>
+        }
+      />
+      <Route path="/publicaciones/*" element={<Navigate to="/publicaciones" replace />} />
+
+      {/* Intercambios */}
+      <Route
+        path="/intercambios"
+        element={
+          <ProtectedRoute>
+            <PrivateShell>
+              <IntercambiosList />
+            </PrivateShell>
+          </ProtectedRoute>
+        }
+      />
+      <Route
+        path="/intercambios/:id"
+        element={
+          <ProtectedRoute>
+            <PrivateShell>
+              <IntercambioDetail />
+            </PrivateShell>
+          </ProtectedRoute>
+        }
+      />
+      <Route path="/intercambios/*" element={<Navigate to="/intercambios" replace />} />
+
+      {/* PERFIL */}
+      <Route
+        path="/perfil"
+        element={
+          <ProtectedRoute>
+            <PrivateShell>
+              <MiPerfil />
+            </PrivateShell>
+          </ProtectedRoute>
+        }
+      />
+      <Route
+        path="/perfil/:id"
+        element={
+          <ProtectedRoute>
+            <PrivateShell>
+              <PerfilPublico />
+            </PrivateShell>
+          </ProtectedRoute>
+        }
+      />
+
+      {/* NOTIFICACIONES */}
+      <Route
+        path="/notificaciones"
+        element={
+          <ProtectedRoute>
+            <PrivateShell>
+              <NotificationsPage />
             </PrivateShell>
           </ProtectedRoute>
         }
@@ -162,8 +232,7 @@ export default function App() {
         }
       />
 
-      {/* fallback */}
-      <Route path="*" element={<Navigate to="/login" replace />} />
+      <Route path="*" element={<RoleHomeFallback />} />
     </Routes>
   );
 }
