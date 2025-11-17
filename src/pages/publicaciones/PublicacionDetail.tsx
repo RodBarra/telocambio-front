@@ -557,70 +557,103 @@ export default function PublicacionDetail() {
 
   const OfferCard = ({ o }: { o: Intercambio }) => {
     const mini = pubCache[o.publicacion_ofrecida_id];
-    const isPendiente = o.estado_intercambio_id === 1;
+    const estado = o.estado_intercambio_id;
+
+    const isPendiente = estado === 1;
     const showActions = soyDueno && isPendiente;
 
+    // Fondo según estado
+    const bgByEstado = {
+      1: "bg-amber-50/50 border-amber-200",      // Pendiente
+      4: "bg-blue-50/60 border-blue-200",        // Aceptado
+      2: "bg-emerald-50/60 border-emerald-200",  // Finalizado
+      3: "bg-rose-50/60 border-rose-200",        // Cancelado
+    }[estado] ?? "bg-slate-50 border-slate-200";
+
     return (
-      <li className="rounded-xl border shadow-sm p-3 flex gap-3 items-stretch">
-        <div className="relative">
-          <img
-            src={mini?.primera_imagen || "/img/no-image.png"}
-            alt={mini?.titulo || `Publicación #${o.publicacion_ofrecida_id}`}
-            className="w-24 h-24 object-cover rounded-lg border"
-          />
-        </div>
-        <div className="flex-1 min-w-0">
-          <div className="flex items-start justify-between gap-3">
-            <div className="min-w-0">
-              <div className="text-sm font-medium truncate">
-                {mini?.titulo || `Publicación #${o.publicacion_ofrecida_id}`}
-              </div>
-              <div className="mt-1 text-xs text-gray-500">
-                Oferta #{o.id} • creada {metaFmt((o as any).creada_en)}
-              </div>
-            </div>
-            <StatusChip estado={o.estado_intercambio_id} />
+      <li
+        className={`w-full rounded-2xl border p-4 shadow-sm
+                    transition-all duration-200
+                    hover:shadow-lg hover:-translate-y-0.5 hover:border-blue-300 hover:bg-white/90
+                    ${bgByEstado}`}
+      >
+        {/* Layout interno: columna en mobile, fila en sm+ */}
+        <div className="flex flex-col gap-3 sm:flex-row sm:items-stretch">
+          {/* Imagen */}
+          <div className="w-full sm:w-auto flex justify-center sm:block">
+            <img
+              src={mini?.primera_imagen || "/img/no-image.png"}
+              alt={mini?.titulo || `Publicación`}
+              className="w-24 h-24 sm:w-28 sm:h-28 object-cover rounded-xl border shadow-sm"
+            />
           </div>
 
-          {mini && (
-            <div className="mt-2">
-              <PubStatusChip estado={mini.estado_publicacion_id} />
+          {/* Contenido */}
+          <div className="flex-1 min-w-0 flex flex-col justify-between">
+            {/* Título + meta + estado */}
+            <div className="min-w-0">
+              <div className="flex flex-col gap-1 sm:flex-row sm:items-start sm:justify-between sm:gap-2">
+                <div className="min-w-0">
+                  <h4 className="font-semibold text-sm truncate">
+                    {mini?.titulo || `Publicación #${o.publicacion_ofrecida_id}`}
+                  </h4>
+
+                  <p className="text-xs text-gray-600 mt-0.5">
+                    Oferta #{o.id} • creada {metaFmt((o as any).creada_en)}
+                  </p>
+                </div>
+
+                {/* Chip de estado: debajo del título en mobile, a la derecha en desktop */}
+                <div className="mt-1 sm:mt-0 sm:ml-2 self-start">
+                  <StatusChip estado={estado} />
+                </div>
+              </div>
             </div>
-          )}
 
-          <div className="mt-3 flex flex-wrap gap-2">
-            <Link
-              to={`/publicaciones/${o.publicacion_ofrecida_id}`}
-              className="inline-flex items-center justify-center rounded-md px-3 py-1.5 text-sm font-medium bg-white text-blue-500 border border-blue-500 hover:bg-blue-500 hover:text-white transition-colors"
-            >
-              Ver publicación
-            </Link>
+            {/* Acciones */}
+            <div className="mt-3 flex flex-wrap gap-2">
+              {/* Botón principal — Ver Intercambio (azul) */}
+              <Link
+                to={`/intercambios/${o.id}`}
+                className="inline-flex items-center justify-center rounded-lg px-3 py-1.5 text-sm font-semibold
+                          bg-blue-600 text-white border border-blue-600
+                          hover:bg-white hover:text-blue-600
+                          transition-all duration-200"
+              >
+                🔄 Ver intercambio
+              </Link>
 
-            {showActions ? (
-              <>
-                <button
-                  className="inline-flex items-center justify-center rounded-md px-3 py-1.5 text-sm font-semibold bg-white text-blue-500 border border-blue-500 hover:bg-blue-500 hover:text-white transition-colors"
-                  onClick={() => openConfirm(o, "aceptar")}
-                >
-                  Aceptar
-                </button>
-                <button
-                  className="inline-flex items-center justify-center rounded-md px-3 py-1.5 text-sm font-semibold bg-white text-blue-500 border border-blue-500 hover:bg-blue-500 hover:text-white transition-colors"
-                  onClick={() => openConfirm(o, "cancelar")}
-                >
-                  Rechazar
-                </button>
-              </>
-            ) : isPendiente ? (
-              <span className="text-[11px] text-amber-700 bg-amber-50 border border-amber-200 rounded px-2 py-0.5">
-                Pendiente de respuesta
-              </span>
-            ) : null}
+              {/* Aceptar / Rechazar (solo dueño, se mantiene igual) */}
+              {showActions && (
+                <>
+                  <button
+                    className="inline-flex items-center justify-center rounded-lg px-3 py-1.5 text-sm font-semibold 
+                              bg-blue-600 text-white border border-blue-600
+                              hover:bg-white hover:text-blue-600
+                              transition-all duration-200"
+                    onClick={() => openConfirm(o, "aceptar")}
+                  >
+                    ✔ Aceptar
+                  </button>
+
+                  <button
+                    className="inline-flex items-center justify-center rounded-lg px-3 py-1.5 text-sm font-semibold 
+                              bg-white text-rose-600 border border-rose-600
+                              hover:bg-rose-600 hover:text-white
+                              transition-all duration-200"
+                    onClick={() => openConfirm(o, "cancelar")}
+                  >
+                    ✖ Rechazar
+                  </button>
+                </>
+              )}
+            </div>
           </div>
         </div>
       </li>
     );
   };
+
 
   const ownerProfileUrl = `/perfil/${pub.propietario_usuario_id}`;
 
@@ -837,7 +870,7 @@ export default function PublicacionDetail() {
             <div className="mt-6 bg-white rounded-2xl border shadow-sm p-5">
               <div className="flex items-center justify-between mb-3">
                 <h2 className="text-base font-semibold">
-                  Mis trueques ofrecidos a esta publicación
+                  📥 Mis trueques ofrecidos a esta publicación 
                 </h2>
                 {loadingOfertas && (
                   <span className="text-xs text-gray-500">Cargando…</span>

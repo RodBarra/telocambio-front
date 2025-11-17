@@ -557,12 +557,12 @@ export default function IntercambiosList() {
                   </div>
                 </div>
 
-                <div className="flex flex-wrap lg:flex-nowrap gap-2 justify-center lg:justify-between">
+                <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-2 justify-items-stretch">
                   {[ESTADO.PEND, ESTADO.ACEP, ESTADO.FIN, ESTADO.CANC].map(
                     (e) => {
                       const isActive = estado === e;
                       const baseCls =
-                        "inline-flex flex-col sm:flex-row sm:items-center gap-1 sm:gap-2 rounded-2xl px-3 py-2 text-xs sm:text-sm border transition-all duration-200 whitespace-nowrap transform hover:-translate-y-0.5";
+                        "inline-flex flex-col sm:flex-row sm:items-center gap-1 sm:gap-2 rounded-2xl px-3 py-2 text-xs sm:text-sm border transition-all duration-200 transform hover:-translate-y-0.5 w-full";
                       let colorCls = "";
                       if (e === ESTADO.PEND) {
                         colorCls = isActive
@@ -651,36 +651,55 @@ export default function IntercambiosList() {
 
           {/* Guía rápida de estados estilo diagrama */}
           <div className="mt-10 text-xs text-slate-600">
-            <div className="rounded-2xl border bg-slate-50 p-4 sm:p-5 transition-all duration-200 hover:-translate-y-0.5 hover:shadow-md">
+            <div className="rounded-2xl border bg-slate-50 p-4 sm:p- transition-all duration-200 hover:-translate-y-0.5 hover:shadow-md">
               <h3 className="text-center text-sm font-semibold text-slate-800 mb-3">
                 Guía rápida de estados
               </h3>
 
-              {/* Estados + flechas */}
-              <div className="flex flex-wrap items-center justify-center gap-12 mb-2">
-                <StatusChip estado={ESTADO.PEND} />
-                <span className="text-slate-800 text-sm">➨</span>
-                <StatusChip estado={ESTADO.ACEP} />
-                <span className="text-slate-800 text-sm">➨</span>
-                <StatusChip estado={ESTADO.FIN} />
-              </div>
+              {/* Contenedor limitado para que no se abra demasiado en desktop */}
+              <div className="max-w-3xl mx-auto">
+                {/* Estados – desktop: horizontal (desde md = 768px) */}
+                <div className="hidden md:flex items-center justify-center gap-16 mb-3">
+                  <StatusChip estado={ESTADO.PEND} />
+                  <span className="text-slate-800 text-sm mx-7">➨</span>
+                  <StatusChip estado={ESTADO.ACEP} />
+                  <span className="text-slate-800 text-sm mx-7">➨</span>
+                  <StatusChip estado={ESTADO.FIN} />
+                </div>
 
-              {/* Descripciones */}
-              <div className="flex flex-wrap items-start justify-center gap-8 text-[11px] mt-1">
-                <div className="text-center max-w-[140px]">
-                  <div className="text-slate-500">
+                {/* Estados – mobile / tablet chica: vertical */}
+                <div className="flex md:hidden flex-col items-center gap-1 mb-3">
+                  <StatusChip estado={ESTADO.PEND} />
+                  <span className="text-slate-800 text-xs">↓</span>
+                  <StatusChip estado={ESTADO.ACEP} />
+                  <span className="text-slate-800 text-xs">↓</span>
+                  <StatusChip estado={ESTADO.FIN} />
+                </div>
+
+                {/* Descripciones – desktop: alineadas bajo cada estado */}
+                <div className="hidden sm:flex justify-between gap-6 text-[11px] mt-1">
+                  <p className="flex-1 text-center text-slate-500">
                     Se crea la oferta y queda esperando respuesta.
-                  </div>
-                </div>
-                <div className="text-center max-w-[140px]">
-                  <div className="text-slate-500">
+                  </p>
+                  <p className="flex-1 text-center text-slate-500">
                     El receptor acepta la oferta y el trueque queda en curso.
-                  </div>
-                </div>
-                <div className="text-center max-w-[140px]">
-                  <div className="text-slate-500">
+                  </p>
+                  <p className="flex-1 text-center text-slate-500">
                     Ambas partes confirman que el trueque se realizó.
-                  </div>
+                  </p>
+                </div>
+
+                {/* Descripciones – mobile: una bajo otra */}
+                <div className="sm:hidden mt-1 flex flex-col items-center gap-2 text-[11px]">
+                  <p className="text-center text-slate-500 max-w-xs">
+                    Se crea la oferta y queda esperando respuesta.
+                  </p>
+                  <p className="text-center text-slate-500 max-w-xs">
+                    El receptor acepta la oferta y el trueque queda en curso.
+                  </p>
+                  <p className="text-center text-slate-500 max-w-xs">
+                    Ambas partes confirman que el trueque se realizó.
+                  </p>
                 </div>
               </div>
 
@@ -693,7 +712,7 @@ export default function IntercambiosList() {
                 .
               </p>
             </div>
-          </div>
+          </div>     
         </div>
       </div>
     </div>

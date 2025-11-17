@@ -135,7 +135,7 @@ export default function ImageCarousel({
 
         {/* Thumbnails */}
         {showThumbnails && len > 1 && (
-          <div className="mt-3 flex gap-2 overflow-x-auto">
+          <div className="mt-3 flex gap-2 justify-center">
             {safeImages.map((img, i) => (
               <button
                 key={img.id ?? `${img.url}-${i}`}

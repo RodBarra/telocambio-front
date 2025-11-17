@@ -55,6 +55,14 @@ export default function PublicationCard({
       ? item.primera_imagen
       : "/img/no-image.png";
 
+  // Total de imágenes (soporta distintos formatos desde el backend)
+  const totalImagenes: number | null =
+    typeof (item as any).imagenes_count === "number"
+      ? (item as any).imagenes_count
+      : Array.isArray((item as any).imagenes)
+      ? (item as any).imagenes.length
+      : null;
+
   const estadoTxt = ESTADO_LABEL[item.estado_publicacion_id] ?? "—";
   const isOculta = item.estado_publicacion_id === 2;
   const toggleTitle = isOculta ? "Hacer visible" : "Ocultar publicación";
@@ -124,6 +132,21 @@ export default function PublicationCard({
               </span>
             </span>
           )}
+
+          {/* Indicador de cantidad de imágenes (solo si hay más de una) */}
+          {totalImagenes !== null && totalImagenes > 1 && (
+            <span
+              className="absolute bottom-2 right-2 inline-flex items-center gap-1 text-[10px] font-medium px-2 py-0.5 rounded-full 
+                         bg-black/55 text-white shadow-sm backdrop-blur-sm"
+              title={`Esta publicación tiene ${totalImagenes} imágenes`}
+            >
+              <span aria-hidden="true">🖼️</span>
+              <span>
+                1<span className="mx-0.5">/</span>
+                {totalImagenes}
+              </span>
+            </span>
+          )}
         </div>
 
         <div className="p-3">
@@ -138,40 +161,82 @@ export default function PublicationCard({
       </Link>
 
       {showActions && (
-        <div className="px-3 pb-3 mt-auto flex items-center gap-2 flex-nowrap justify-center">
-          <button
-            type="button"
-            className="inline-flex items-center justify-center px-2.5 py-1.5 text-[11px] font-semibold rounded-lg 
-                       bg-white text-blue-500 border border-blue-500 
-                       hover:bg-blue-500 hover:text-white transition-colors"
-            onClick={() => onEdit && onEdit(item.id)}
-          >
-            ✏️ Editar
-          </button>
+  <div className="px-3 pb-3 mt-auto">
+    {/* Desktop / tablet grande: 3 botones en fila */}
+    <div className="hidden sm:flex items-center gap-2 flex-nowrap justify-center">
+      <button
+        type="button"
+        className="inline-flex items-center justify-center px-2.5 py-1.5 text-[11px] font-semibold rounded-lg 
+                   bg-white text-blue-500 border border-blue-500 
+                   hover:bg-blue-500 hover:text-white transition-colors"
+        onClick={() => onEdit && onEdit(item.id)}
+      >
+        ✏️ Editar
+      </button>
 
-          <button
-            type="button"
-            className="inline-flex items-center justify-center px-2.5 py-1.5 text-[11px] font-semibold rounded-lg 
-                       bg-white text-blue-500 border border-blue-500 
-                       hover:bg-blue-500 hover:text-white transition-colors"
-            onClick={() => onToggleVisibility && onToggleVisibility(item)}
-            title={toggleTitle}
-          >
-            {isOculta ? "👁️ Mostrar" : "🙈 Ocultar"}
-          </button>
+      <button
+        type="button"
+        className="inline-flex items-center justify-center px-2.5 py-1.5 text-[11px] font-semibold rounded-lg 
+                   bg-white text-blue-500 border border-blue-500 
+                   hover:bg-blue-500 hover:text-white transition-colors"
+        onClick={() => onToggleVisibility && onToggleVisibility(item)}
+        title={toggleTitle}
+      >
+        {isOculta ? "👁️ Mostrar" : "🙈 Ocultar"}
+      </button>
 
-          <button
-            type="button"
-            className="inline-flex items-center justify-center px-3 py-1.5 text-[11px] font-semibold rounded-lg 
-                       bg-rose-600 text-white border border-rose-600 
-                       hover:bg-white hover:text-rose-600 transition-colors"
-            onClick={() => onDelete && onDelete(item.id)}
-            title="Eliminar publicación"
-          >
-            🗑️ Eliminar
-          </button>
-        </div>
-      )}
+      <button
+        type="button"
+        className="inline-flex items-center justify-center px-3 py-1.5 text-[11px] font-semibold rounded-lg 
+                   bg-rose-600 text-white border border-rose-600 
+                   hover:bg-white hover:text-rose-600 transition-colors"
+        onClick={() => onDelete && onDelete(item.id)}
+        title="Eliminar publicación"
+      >
+        🗑️ Eliminar
+      </button>
+    </div>
+
+    {/* Mobile: Editar + Ocultar arriba, Eliminar abajo centrado */}
+    <div className="flex sm:hidden flex-col gap-2">
+      <div className="flex gap-2">
+        <button
+          type="button"
+          className="flex-1 inline-flex items-center justify-center px-2.5 py-1.5 text-[11px] font-semibold rounded-lg 
+                     bg-white text-blue-500 border border-blue-500 
+                     hover:bg-blue-500 hover:text-white transition-colors"
+          onClick={() => onEdit && onEdit(item.id)}
+        >
+          ✏️ Editar
+        </button>
+
+        <button
+          type="button"
+          className="flex-1 inline-flex items-center justify-center px-2.5 py-1.5 text-[11px] font-semibold rounded-lg 
+                     bg-white text-blue-500 border border-blue-500 
+                     hover:bg-blue-500 hover:text-white transition-colors"
+          onClick={() => onToggleVisibility && onToggleVisibility(item)}
+          title={toggleTitle}
+        >
+          {isOculta ? "👁️ Mostrar" : "🙈 Ocultar"}
+        </button>
+      </div>
+
+      <div className="flex justify-center">
+        <button
+          type="button"
+          className="w-full max-w-[150px] inline-flex items-center justify-center px-3 py-1.5 text-[11px] font-semibold rounded-lg 
+                     bg-rose-600 text-white border border-rose-600 
+                     hover:bg-white hover:text-rose-600 transition-colors"
+          onClick={() => onDelete && onDelete(item.id)}
+          title="Eliminar publicación"
+        >
+          🗑️ Eliminar
+        </button>
+      </div>
+    </div>
+  </div>
+)}
     </div>
   );
 }

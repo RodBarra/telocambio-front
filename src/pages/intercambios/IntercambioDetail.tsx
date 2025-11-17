@@ -87,7 +87,13 @@ function Star({
       onClick={onClick}
       onMouseEnter={onMouseEnter}
       onMouseLeave={onMouseLeave}
-      className="text-2xl leading-none"
+      className={[
+        "mx-1 text-3xl md:text-4xl leading-none transition-all duration-150 ease-out",
+        filled
+          ? "text-amber-400 drop-shadow-[0_0_6px_rgba(251,191,36,0.7)]"
+          : "text-slate-300 hover:text-amber-300",
+        " hover:scale-110 active:scale-95"
+      ].join(" ")}
     >
       {filled ? "★" : "☆"}
     </button>
@@ -123,63 +129,125 @@ function RatingModal({
 
   const finalHover = hover || rating;
 
+  const LABELS: Record<number, { text: string; emoji: string }> = {
+    1: { text: "Muy mala experiencia", emoji: "😞" },
+    2: { text: "Podría ser mejor", emoji: "😕" },
+    3: { text: "Intercambio correcto", emoji: "🙂" },
+    4: { text: "Muy buena experiencia", emoji: "😊" },
+    5: { text: "Excelente, todo perfecto", emoji: "🤩" },
+  };
+
+  const mood = LABELS[finalHover] ?? {
+    text: "Elige una valoración de 1 a 5 ⭐",
+    emoji: "⭐",
+  };
+
+  const remaining = 500 - comentario.length;
+  const nearLimit = remaining <= 50;
+
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 px-4">
-      <div className="w-full max-w-md rounded-2xl bg-white shadow-xl border">
-        <div className="px-5 py-4 border-b">
-          <h3 className="text-lg font-semibold">Calificar contraparte</h3>
-          <p className="text-sm text-slate-600 mt-1">
-            Valora tu experiencia con este usuario (1 a 5 estrellas). Opcionalmente, deja un comentario.
-          </p>
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/45 backdrop-blur-sm px-4">
+      <div className="w-full max-w-md rounded-3xl bg-white shadow-2xl border border-slate-100 overflow-hidden animate-[fadeIn_0.18s_ease-out]">
+        {/* Header */}
+        <div className="px-5 py-4 border-b bg-gradient-to-r from-blue-600 via-indigo-500 to-emerald-500 text-white">
+          <div className="flex items-center gap-3">
+            <div className="inline-flex h-10 w-10 items-center justify-center rounded-2xl bg-white/15 backdrop-blur text-2xl">
+              ⭐
+            </div>
+            <div className="min-w-0">
+              <h3 className="text-lg font-semibold truncate">
+                Calificar contraparte
+              </h3>
+              <p className="text-xs md:text-sm text-white/80">
+                Valora tu experiencia (1 a 5 estrellas) y ayuda a la comunidad a
+                confiar más en los trueques.
+              </p>
+            </div>
+          </div>
         </div>
 
-        <div className="px-5 py-4 space-y-4">
-          <div className="flex items-center gap-2 justify-center">
-            {[1, 2, 3, 4, 5].map((n) => (
-              <Star
-                key={n}
-                filled={n <= finalHover}
-                onClick={() => setRating(n)}
-                onMouseEnter={() => setHover(n)}
-                onMouseLeave={() => setHover(0)}
-                label={`${n} estrella${n > 1 ? "s" : ""}`}
-              />
-            ))}
+        {/* Body */}
+        <div className="px-5 py-5 space-y-4">
+          {/* Stars */}
+          <div className="flex flex-col items-center gap-2">
+            <div className="flex items-center justify-center">
+              {[1, 2, 3, 4, 5].map((n) => (
+                <Star
+                  key={n}
+                  filled={n <= finalHover}
+                  onClick={() => setRating(n)}
+                  onMouseEnter={() => setHover(n)}
+                  onMouseLeave={() => setHover(0)}
+                  label={`${n} estrella${n > 1 ? "s" : ""}`}
+                />
+              ))}
+            </div>
+            <div className="inline-flex items-center gap-2 rounded-full bg-slate-50 border border-slate-200 px-3 py-1 text-[11px] md:text-xs text-slate-700">
+              <span aria-hidden="true" className="text-base">
+                {mood.emoji}
+              </span>
+              <span className="whitespace-nowrap md:whitespace-normal">
+                {mood.text}
+              </span>
+            </div>
           </div>
 
+          {/* Comment */}
           <div>
-            <label className="text-sm font-medium text-slate-700">
+            <label className="text-sm font-medium text-slate-700 flex items-center gap-2">
               Comentario (opcional)
+              <span className="text-[11px] font-normal text-slate-400">
+                Cuéntanos cómo fue el trato, la puntualidad, etc.
+              </span>
             </label>
             <textarea
-              className="input mt-1 w-full min-h-[96px]"
-              placeholder="Ej: Me entregó el producto muy rápido y en excelente estado."
+              className="input mt-1 w-full min-h-[110px] resize-y text-sm"
+              placeholder="Ej: Me entregó el producto muy rápido, fue puntual y el trueque salió perfecto 🙌."
               value={comentario}
               onChange={(e) => setComentario(e.target.value)}
               maxLength={500}
             />
-            <div className="mt-1 text-right text-xs text-slate-400">
-              {comentario.length}/500
+            <div className="mt-1 flex items-center justify-between text-xs">
+              <span className="text-slate-400">
+                Sé respetuoso: tu opinión ayuda a otros usuarios.
+              </span>
+              <span
+                className={
+                  "font-medium " +
+                  (nearLimit ? "text-amber-600" : "text-slate-400")
+                }
+              >
+                {comentario.length}/500
+              </span>
             </div>
           </div>
 
           {error && (
-            <div className="rounded border border-rose-200 bg-rose-50 px-3 py-2 text-sm text-rose-700">
-              {error}
+            <div className="rounded-2xl border border-rose-200 bg-rose-50 px-3 py-2 text-sm text-rose-700 flex items-start gap-2">
+              <span className="mt-[2px]" aria-hidden="true">
+                ⚠️
+              </span>
+              <span>{error}</span>
             </div>
           )}
         </div>
 
-        <div className="px-5 py-4 border-t flex items-center justify-end gap-2">
+        {/* Footer */}
+        <div className="px-5 py-4 border-t bg-slate-50/80 flex flex-col-reverse sm:flex-row sm:items-center sm:justify-end gap-2">
           <button
-            className="btn bg-blue-600 text-white border border-blue-600 hover:bg-white hover:text-blue-600 transition-colors disabled:opacity-60"
+            className="inline-flex items-center justify-center rounded-xl border border-slate-300 bg-white px-4 py-2 text-sm font-medium text-slate-700 shadow-sm hover:bg-slate-100 transition-all duration-150 active:scale-[0.98] disabled:opacity-60"
             onClick={onClose}
             disabled={busy}
           >
             Cancelar
           </button>
           <button
-            className="btn bg-blue-600 text-white border border-blue-600 hover:bg-white hover:text-blue-600 transition-colors disabled:opacity-60"
+            className={[
+              "inline-flex items-center justify-center rounded-xl px-4 py-2 text-sm font-semibold text-white shadow-sm",
+              "bg-gradient-to-r from-blue-600 via-indigo-500 to-emerald-500",
+              "hover:from-blue-500 hover:via-indigo-500 hover:to-emerald-400",
+              "transition-all duration-150 active:scale-[0.98] disabled:opacity-60 disabled:cursor-not-allowed",
+            ].join(" ")}
             onClick={async () => {
               if (rating < 1 || rating > 5) return;
               await onSubmit(
@@ -189,7 +257,12 @@ function RatingModal({
             }}
             disabled={busy || rating < 1}
           >
-            {busy ? "Enviando…" : "Enviar valoración"}
+            {busy ? "Enviando valoración…" : "Enviar valoración"}
+            {!busy && (
+              <span aria-hidden="true" className="ml-2">
+                🚀
+              </span>
+            )}
           </button>
         </div>
       </div>
@@ -1030,10 +1103,12 @@ export default function IntercambioDetail() {
                   <div className="text-sm">
                     El trueque está <b>aceptado</b>. Cuando se concrete en la
                     vida real, marca como <b>realizado</b>.
-                    {yoConfirme ? " Ya registraste tu confirmación. " : " "}
-                    Si finalmente no se hará, puedes <b>cancelar</b>.
+                    {yoConfirme
+                      ? " Ya registraste tu confirmación. Ahora solo la contraparte puede cancelar si aún no lo ha marcado."
+                      : " Si finalmente no se hará y todavía no lo has marcado como realizado, puedes cancelarlo."}
                   </div>
                   <div className="flex gap-2">
+                    {/* Solo puede marcar como realizado si aún no lo ha hecho */}
                     {!yoConfirme && (
                       <button
                         className="btn bg-blue-600 text-white border border-blue-600 hover:bg-white hover:text-blue-600 transition-colors disabled:opacity-60"
@@ -1043,13 +1118,17 @@ export default function IntercambioDetail() {
                         Marcar como realizado
                       </button>
                     )}
-                    <button
-                      className="btn bg-blue-600 text-white border border-blue-600 hover:bg-white hover:text-blue-600 transition-colors disabled:opacity-60"
-                      disabled={busy}
-                      onClick={openCancel}
-                    >
-                      Cancelar
-                    </button>
+
+                    {/* Solo puede cancelar quien NO ha marcado como realizado */}
+                    {!yoConfirme && (
+                      <button
+                        className="btn bg-blue-600 text-white border border-blue-600 hover:bg-white hover:text-blue-600 transition-colors disabled:opacity-60"
+                        disabled={busy}
+                        onClick={openCancel}
+                      >
+                        Cancelar
+                      </button>
+                    )}
                   </div>
                 </div>
               )}
