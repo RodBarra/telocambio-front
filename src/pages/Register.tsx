@@ -3,6 +3,7 @@ import { Link, useNavigate } from "react-router-dom";
 import { AlertErr, AlertOk } from "../components/Alert";
 import { Field } from "../components/form";
 import { AuthApi } from "../services/auth";
+import { normalizePhoneCL } from "../utils/phone";
 
 type Tipo = "departamento" | "condominio";
 type Errors = Partial<Record<
@@ -102,6 +103,12 @@ export default function Register() {
     if (!form.password || form.password.length < 8) e.password = "La contraseña debe tener al menos 8 caracteres.";
     if (!form.nombre) e.nombre = "Ingresa tu nombre.";
     if (!form.apellidos) e.apellidos = "Ingresa tus apellidos.";
+    // Teléfono obligatorio y en formato chileno
+    if (!form.telefono) {
+      e.telefono = "Ingresa tu teléfono móvil.";
+    } else if (!normalizePhoneCL(form.telefono)) {
+      e.telefono = "Ingresa un número chileno válido (ej: +56912345678 o 912345678).";
+    }
     if (tipo === "departamento") {
       if (!form.torre) e.torre = "Ingresa la torre/edificio.";
       if (!form.numero) e.numero = "Ingresa el número del depto.";
@@ -124,22 +131,38 @@ export default function Register() {
   };
 
   const onSubmit = async (e: FormEvent) => {
-    e.preventDefault();
-    setErrBanner(null); setOkBanner(null);
-    if (!validate()) return;
-    setLoading(true);
-    try {
-      await AuthApi.register(form);
-      setOkBanner("Cuenta creada con éxito. Ahora puedes iniciar sesión.");
-      setTimeout(() => nav("/login"), 1000);
-    } catch (e: any) {
-      const reason = e?.response?.data?.reason;
-      const msg = friendlyVerifyError[reason] || e?.response?.data?.detail || "No se pudo crear la cuenta. Revisa los datos.";
-      setErrBanner(msg);
-    } finally {
-      setLoading(false);
-    }
-  };
+  e.preventDefault();
+  setErrBanner(null);
+  setOkBanner(null);
+
+  // Validaciones de frontend
+  if (!validate()) return;
+
+  // Ya pasó la validación, así que esto NO debería ser null
+  const normalizedTelefono = normalizePhoneCL(form.telefono)!;
+
+  setLoading(true);
+
+  try {
+    await AuthApi.register({
+      ...form,
+      telefono: normalizedTelefono, // <- se envía siempre en formato +569XXXXXXXX
+    });
+
+    setOkBanner("Cuenta creada con éxito. Ahora puedes iniciar sesión.");
+    setTimeout(() => nav("/login"), 1000);
+  } catch (e: any) {
+    const reason = e?.response?.data?.reason;
+    const msg =
+      friendlyVerifyError[reason] ||
+      e?.response?.data?.detail ||
+      "No se pudo crear la cuenta. Revisa los datos.";
+    setErrBanner(msg);
+  } finally {
+    setLoading(false);
+  }
+};
+
 
   // badge para el label del código
   const verifyBadge = (() => {
@@ -277,12 +300,13 @@ export default function Register() {
                     />
                   </Field>
                   <div className="md:col-span-2">
-                    <Field label="Teléfono (opcional)" error={errors.telefono}>
+                    <Field label="Teléfono móvil" error={errors.telefono}>
                       <input
-                        className="input"
+                        className={`input ${errors.telefono ? "border-red-300" : ""}`}
                         value={form.telefono}
                         onChange={(e) => set("telefono", e.target.value)}
                         autoComplete="tel"
+                        placeholder="+56912345678 o 912345678"
                       />
                     </Field>
                   </div>

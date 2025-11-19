@@ -66,6 +66,7 @@ export default function PublicationCard({
   const estadoTxt = ESTADO_LABEL[item.estado_publicacion_id] ?? "—";
   const isOculta = item.estado_publicacion_id === 2;
   const toggleTitle = isOculta ? "Hacer visible" : "Ocultar publicación";
+  const enIntercambio = item.intercambio_en_progreso === true;
 
   const estadoChipClass = useMemo(() => {
     if (item.estado_publicacion_id === 2) return "bg-amber-500 text-white";
@@ -93,7 +94,11 @@ export default function PublicationCard({
   }, [item.creada_en]);
 
   return (
-    <div className="bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden flex flex-col hover:shadow-lg hover:-translate-y-0.5 transition-all duration-200">
+    <div
+      className={`bg-white rounded-2xl border shadow-sm overflow-hidden flex flex-col 
+                  hover:shadow-lg hover:-translate-y-0.5 transition-all duration-200
+                  ${enIntercambio ? "border-blue-300 bg-blue-50/60" : "border-slate-200"}`}
+    >
       <Link
         to={`/publicaciones/${item.id}`}
         className="block group focus:outline-none focus:ring-2 focus:ring-blue-400 focus:ring-offset-2 focus:ring-offset-white"
@@ -153,10 +158,24 @@ export default function PublicationCard({
           <h3 className="font-semibold leading-snug text-slate-900 line-clamp-2 min-h-[2.5rem]">
             <Highlight text={item.titulo} needle={highlight} />
           </h3>
+
           <div className="mt-1 text-xs text-slate-500 flex items-center gap-1">
             <span aria-hidden="true">📅</span>
             <span>{fechaStr}</span>
           </div>
+
+          {/* ⭐ NUEVO: aviso de intercambio en proceso */}
+          {enIntercambio && (
+            <div className="mt-2 rounded-xl border border-blue-200 bg-blue-50 text-blue-700 text-[11px] px-3 py-1.5 flex items-center gap-2">
+              <span className="text-base" aria-hidden="true">
+                🔄
+              </span>
+              <span className="leading-snug">
+                Esta publicación está{" "}
+                <b>en proceso de intercambio</b>.
+              </span>
+            </div>
+          )}
         </div>
       </Link>
 

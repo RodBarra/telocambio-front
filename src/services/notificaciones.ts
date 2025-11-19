@@ -27,30 +27,46 @@ type ListParams = {
 };
 
 export async function getBadge(): Promise<{ no_leidas: number }> {
-  return await http.get("/notificaciones/badge/");
+  // axios: http.get -> AxiosResponse, sacamos .data
+  const res = await http.get<{ no_leidas: number }>("/notificaciones/badge/");
+  return res.data;
 }
 
-export async function listNotificaciones(params: ListParams = {}): Promise<Notification[]> {
+export async function listNotificaciones(
+  params: ListParams = {}
+): Promise<Notification[]> {
   const q = new URLSearchParams();
   if (params.soloNoLeidas) q.set("soloNoLeidas", "true");
   if (params.page) q.set("page", String(params.page));
   if (params.page_size) q.set("page_size", String(params.page_size));
   const qs = q.toString();
   const url = `/notificaciones/${qs ? `?${qs}` : ""}`;
-  const data = await http.get(url);
+
+  // Puede devolver directamente un array o un objeto { results: [...] }
+  const res = await http.get<Notification[] | { results: Notification[] }>(url);
+  const data = res.data as any;
+
   if (Array.isArray(data)) return data;
-  if (Array.isArray((data as any)?.results)) return (data as any).results;
+  if (Array.isArray(data?.results)) return data.results as Notification[];
+
   return [];
 }
 
 export async function marcarLeida(id: number): Promise<void> {
   await http.patch(`/notificaciones/${id}/leer/`, {});
+  window.dispatchEvent(new CustomEvent("notif-updated")); 
 }
 
 export async function marcarTodasLeidas(): Promise<{ marcadas: number }> {
-  return await http.patch(`/notificaciones/leer-todas/`, {});
+  const res = await http.patch<{ marcadas: number }>(
+    `/notificaciones/leer-todas/`,
+    {}
+  );
+  window.dispatchEvent(new CustomEvent("notif-updated"));
+  return res.data;
 }
 
 export async function eliminarNotif(id: number): Promise<void> {
   await http.delete(`/notificaciones/${id}/`);
+  window.dispatchEvent(new CustomEvent("notif-updated"));
 }

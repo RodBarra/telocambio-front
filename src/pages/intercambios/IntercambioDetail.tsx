@@ -1,4 +1,3 @@
-// src/pages/intercambios/IntercambioDetail.tsx
 import { useEffect, useMemo, useState } from "react";
 import { useNavigate, useParams, Link } from "react-router-dom";
 import Spinner from "../../components/Spinner";
@@ -14,6 +13,7 @@ import {
 import { getPublicacion } from "../../services/publicaciones";
 import { useAuth } from "../../context/AuthContext";
 import type { Intercambio, Publicacion } from "../../types";
+import { buildTelHref, buildWhatsappHref } from "../../utils/phone";
 
 /* ───────────────────────── helpers UI ───────────────────────── */
 
@@ -470,6 +470,34 @@ export default function IntercambioDetail() {
 
   const chip = estadoChip[visibleEstado];
   const cp: any = (inter as any).counterparty;
+  
+  /* ───────────────────────── datos derivados de contraparte ───────────────────────── */
+  const cpNombre =
+  cp && ([cp.nombre, cp.apellidos].filter(Boolean).join(" ") || `Usuario #${cp.id}`);
+
+  // 1) Número crudo tal como viene del backend
+const cpTelefonoRaw: string = cp?.telefono || "";
+
+// 2) Enlaces normalizados (solo si es un número chileno válido)
+const telHref = buildTelHref(cpTelefonoRaw);
+const waHref = buildWhatsappHref(cpTelefonoRaw);
+
+// 3) Número visible en pantalla
+const cpTelefono = cpTelefonoRaw;
+
+// 4) Consideramos que “tiene teléfono” solo si pudimos construir un enlace válido
+const tieneTelefono = !!telHref;
+
+// Dirección de la contraparte
+const cpDireccion =
+  cp && cp.vivienda
+    ? `${cp.vivienda.direccion_texto ?? "—"}${
+        cp.vivienda.numero ? ` #${cp.vivienda.numero}` : ""
+      }${cp.vivienda.torre ? `, Torre ${cp.vivienda.torre}` : ""}`
+    : "—";
+
+const cpInicial = cpNombre ? cpNombre.trim().charAt(0).toUpperCase() : "?";
+const ownerProfileUrl = cp?.id ? `/perfil/${cp.id}` : "";
 
   // --- Mapas locales para mostrar textos bonitos según ID ---
   const CATEGORIA_LABEL: Record<number, string> = {
@@ -548,21 +576,6 @@ export default function IntercambioDetail() {
 
   const solMeta = buildPubMeta(pubSol);
   const ofrMeta = buildPubMeta(pubOfr);
-
-  // datos de contraparte derivados
-  const cpNombre =
-    cp && ([cp.nombre, cp.apellidos].filter(Boolean).join(" ") || `Usuario #${cp.id}`);
-  const cpTelefono: string = cp?.telefono || "";
-  const tieneTelefono = !!cpTelefono;
-  const cpDireccion =
-    cp && cp.vivienda
-      ? `${cp.vivienda.direccion_texto ?? "—"}${
-          cp.vivienda.numero ? ` #${cp.vivienda.numero}` : ""
-        }${cp.vivienda.torre ? `, Torre ${cp.vivienda.torre}` : ""}`
-      : "—";
-  const cpInicial = cpNombre ? cpNombre.trim().charAt(0).toUpperCase() : "?";
-
-  const ownerProfileUrl = cp?.id ? `/perfil/${cp.id}` : "";
 
   // helpers de acciones
   const openAccept = () => {
@@ -704,9 +717,203 @@ export default function IntercambioDetail() {
                 <StatusChip estado={visibleEstado} />
               </div>
             </div>
-
-            {/* cuerpo */}
+            {/* --- INICIO DE LA MODIFICACIÓN (MOVER BLOQUES DE ESTADO) --- */}
             <div className="p-5">
+              
+              {/* Mensaje PENDIENTE */}
+              {visibleEstado === 1 && soyParte && (
+                <div className="mb-6 rounded-2xl border p-5 flex flex-col items-center justify-between gap-3 bg-amber-50/40 animate-pulse text-base">
+                  <div className="text-center">
+                    <span className="text-xl mr-2">⏳</span>
+                    {isOwnerOfSolicitada ? (
+                      <>Este trueque está <b>pendiente</b>. Puedes <b>aceptarlo</b> o <b>cancelarlo</b>.</>
+                    ) : (
+                      <>Este trueque está <b>pendiente</b> de aceptación por la contraparte.</>
+                    )}
+                  </div>
+                  {/* --- INICIO DE LA MODIFICACIÓN --- */}
+                  <div className="flex gap-2 w-full justify-center">
+                    {isOwnerOfSolicitada && (
+                      <button
+                        className="btn bg-emerald-600 text-white border border-emerald-600 hover:bg-white hover:text-emerald-700 hover:border-emerald-600 transition-colors disabled:opacity-60"
+                        disabled={busy}
+                        onClick={openAccept}
+                      >
+                        Aceptar
+                      </button>
+                    )}
+                    <button
+                      className="btn bg-rose-600 text-white border border-rose-600 hover:bg-white hover:text-rose-700 hover:border-rose-600 transition-colors disabled:opacity-60"
+                      disabled={busy}
+                      onClick={openCancel}
+                    >
+                      Cancelar
+                    </button>
+                  </div>
+                  {/* --- FIN DE LA MODIFICACIÓN --- */}
+                </div>
+              )}
+
+              {/* Mensaje ACEPTADO */}
+              {visibleEstado === 4 && soyParte && (
+                <div className="mb-6 rounded-2xl border p-5 flex flex-col items-center justify-between gap-3 bg-blue-50/35 animate-pulse text-base">
+                  <div className="text-center">
+                    <span className="text-xl mr-2">🤝</span>
+                    ¡Intercambio aceptado! Marca como <b>realizado</b> cuando se concrete.
+                  </div>
+                  {/* --- INICIO DE LA MODIFICACIÓN --- */}
+                  <div className="flex gap-2 w-full justify-center">
+                    {!yoConfirme && (
+                      <button
+                        className="btn bg-emerald-600 text-white border border-emerald-600 hover:bg-white hover:text-emerald-700 hover:border-emerald-600 transition-colors disabled:opacity-60"
+                        disabled={busy}
+                        onClick={openDone}
+                      >
+                        Marcar como realizado
+                      </button>
+                    )}
+                    {!yoConfirme && (
+                      <button
+                        className="btn bg-rose-600 text-white border border-rose-600 hover:bg-white hover:text-rose-700 hover:border-rose-600 transition-colors disabled:opacity-60"
+                        disabled={busy}
+                        onClick={openCancel}
+                      >
+                        Cancelar
+                      </button>
+                    )}
+                  </div>
+                  {/* --- FIN DE LA MODIFICACIÓN --- */}
+                </div>
+              )}
+
+              {/* Mensaje FINALIZADO */}
+              {visibleEstado === 2 && soyParte && (
+                <div className="mb-6 rounded-2xl border p-5 bg-emerald-50/70 text-emerald-800 animate-pulse">
+                  <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+                    <div className="text-base text-center">
+                      <span className="text-xl mr-2">🎉</span>
+                      ¡Intercambio <b>finalizado</b>! Gracias por usar TeLoCambio.
+                    </div>
+                    <div className="flex items-center gap-2 justify-center">
+                      {miValoracion ? (
+                        <span className="inline-flex items-center gap-2 text-sm text-slate-700 bg-white border border-slate-200 rounded px-3 py-1.5">
+                          Tu valoración:{" "}
+                          <span className="text-amber-500 text-base">
+                            {"★".repeat(miValoracion.puntaje)}
+                            {"☆".repeat(Math.max(0, 5 - miValoracion.puntaje))}
+                          </span>
+                        </span>
+                      ) : (
+                        puedoCalificar && (
+                          <button
+                            className="btn bg-blue-600 text-white border border-blue-600 hover:bg-white hover:text-blue-600 transition-colors"
+                            onClick={() => {
+                              setRatingErr(null);
+                              setRatingOpen(true);
+                            }}
+                          >
+                            Calificar contraparte
+                          </button>
+                        )
+                      )}
+                    </div>
+                  </div>
+                  {miValoracion?.comentario && (
+                    <div className="mt-2 text-sm text-slate-700 text-center sm:text-left">
+                      <span className="text-slate-500">Comentario: </span>
+                      {miValoracion.comentario}
+                    </div>
+                  )}
+                </div>
+              )}
+              
+              {/* Mensaje CANCELADO */}
+              {visibleEstado === 3 && soyParte && (
+                <div className="mb-6 rounded-2xl border p-5 bg-rose-50/80 text-rose-800 text-base text-center animate-pulse">
+                  <span className="text-xl mr-2">💔</span> Este intercambio fue <b>cancelado</b>.
+                </div>
+              )}
+              
+              {bizErr && (
+                <div className="mb-6">
+                  <AlertErr>{bizErr}</AlertErr>
+                </div>
+              )}
+
+              {/* Progreso de confirmación */}
+              {visibleEstado !== 3 && visibleEstado !== 2 && soyParte && (
+                <div className="mb-6 rounded-2xl border bg-white/95 p-4 md:p-5">
+                  <div className="flex flex-col gap-2 md:flex-row md:items-center md:justify-between mb-4">
+                    <div className="text-sm font-semibold text-slate-800">
+                      Progreso de confirmación
+                    </div>
+                    <div className="text-[11px] text-slate-500 flex items-center gap-1 max-w-md">
+                      <span>🔒</span>
+                      <span>
+                        El intercambio se da por finalizado cuando <b>ambas partes</b> lo marcan como realizado.
+                      </span>
+                    </div>
+                  </div>
+
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 text-sm">
+                    {/* Tú */}
+                    <div
+                      className={`rounded-xl border px-3 py-2.5 flex items-center justify-between gap-3 ${
+                        yoConfirme
+                          ? "bg-emerald-50 border-emerald-200 text-emerald-800"
+                          : "bg-slate-50 border-slate-200 text-slate-600"
+                      }`}
+                    >
+                      <div className="flex items-center gap-2">
+                        <span className="inline-flex h-7 w-7 items-center justify-center rounded-full bg-white/70 text-slate-500 text-xs">
+                          🙋
+                        </span>
+                        <div className="flex flex-col">
+                          <span className="text-[11px] font-semibold uppercase tracking-wide text-slate-500">
+                            Tú
+                          </span>
+                          <span className="text-xs">
+                            {isOwnerOfSolicitada ? "Publicación solicitada" : "Publicación ofrecida"}
+                          </span>
+                        </div>
+                      </div>
+                      <span className="text-[11px] font-semibold">
+                        {yoConfirme ? "✔ Confirmado" : "Pendiente"}
+                      </span>
+                    </div>
+
+                    {/* Contraparte */}
+                    <div
+                      className={`rounded-xl border px-3 py-2.5 flex items-center justify-between gap-3 ${
+                        contraparteConfirmo
+                          ? "bg-emerald-50 border-emerald-200 text-emerald-800"
+                          : "bg-slate-50 border-slate-200 text-slate-600"
+                      }`}
+                    >
+                      <div className="flex items-center gap-2">
+                        <span className="inline-flex h-7 w-7 items-center justify-center rounded-full bg-white/70 text-slate-500 text-xs">
+                          🤝
+                        </span>
+                        <div className="flex flex-col">
+                          <span className="text-[11px] font-semibold uppercase tracking-wide text-slate-500">
+                            Contraparte
+                          </span>
+                          <span className="text-xs">
+                            Confirmación de la otra persona
+                          </span>
+                        </div>
+                      </div>
+                      <span className="text-[11px] font-semibold">
+                        {contraparteConfirmo ? "✔ Confirmado" : "Pendiente"}
+                      </span>
+                    </div>
+                  </div>
+                </div>
+              )}
+
+              {/* --- FIN DE LA MODIFICACIÓN --- */}
+            
+
               {/* tarjetas de publicaciones: imagen grande + info ordenada */}
               <div className="grid grid-cols-1 lg:grid-cols-[minmax(0,1.25fr)_auto_minmax(0,1.25fr)] gap-6 items-stretch">
                 {/* solicitada */}
@@ -786,10 +993,11 @@ export default function IntercambioDetail() {
                       <div className="mt-4 w-full flex justify-center">
                         <Link
                           to={`/publicaciones/${inter.publicacion_solicitada_id}`}
-                          className="inline-flex items-center justify-center rounded-xl px-4 py-1.5 text-xs sm:text-sm font-semibold bg-blue-600 text-white border border-blue-600 hover:bg-white hover:text-blue-600 transition-colors"
+                          className="btn bg-blue-600 text-white border border-blue-600 hover:bg-white hover:text-blue-600 transition-colors"
                         >
                           Ver publicación
                         </Link>
+
                       </div>
                     </div>
                   </div>
@@ -947,14 +1155,16 @@ export default function IntercambioDetail() {
                       </p>
                     </div>
 
-                    {/* Acciones de contacto */}
+                    {/* --- INICIO DE LA MODIFICACIÓN (TARJETA CONTACTO HOVER) --- */}
                     <div
                       className="
                         rounded-2xl bg-white border border-slate-200 p-4
                         flex flex-col gap-3
                         md:self-start md:-mt-8 lg:-mt-10
+                        transition-all duration-300 hover:shadow-xl hover:-translate-y-2
                       "
                     >
+                    {/* --- FIN DE LA MODIFICACIÓN --- */}
                       <div className="flex items-center gap-2">
                         <span className="inline-flex h-7 w-7 items-center justify-center rounded-full bg-emerald-50 text-emerald-600">
                           📱
@@ -970,24 +1180,29 @@ export default function IntercambioDetail() {
                       </div>
 
                       <div className="flex flex-wrap gap-2 mt-1">
-                        {tieneTelefono && (
-                          <>
+                      {tieneTelefono && (
+                        <>
+                          {telHref && (
                             <a
-                              href={`tel:${cpTelefono}`}
+                              href={telHref}
                               className="inline-flex items-center justify-center rounded-xl px-3 py-1.5 text-xs font-semibold bg-blue-600 text-white border border-blue-600 hover:bg-white hover:text-blue-600 transition-colors"
                             >
                               📞 Llamar
                             </a>
+                          )}
+
+                          {waHref && (
                             <a
-                              href={`https://wa.me/${cpTelefono}`}
+                              href={waHref}
                               target="_blank"
                               rel="noreferrer"
                               className="inline-flex items-center justify-center rounded-xl px-3 py-1.5 text-xs font-semibold bg-emerald-500 text-white border border-emerald-500 hover:bg-white hover:text-emerald-600 transition-colors"
                             >
                               💬 WhatsApp
                             </a>
-                          </>
-                        )}
+                          )}
+                        </>
+                      )}
 
                         {ownerProfileUrl && (
                           <Link
@@ -1015,171 +1230,6 @@ export default function IntercambioDetail() {
                 )}
               </div>
 
-              {/* Progreso de confirmación */}
-              {visibleEstado !== 3 && visibleEstado !== 2 && soyParte && (
-                <div className="mt-6 rounded-2xl border p-4 bg-white">
-                  <div className="text-sm font-semibold mb-2">
-                    Progreso de confirmación
-                  </div>
-                  <div className="flex flex-col sm:flex-row gap-2 text-sm">
-                    <span
-                      className={`inline-flex items-center gap-2 px-2 py-1 rounded border ${
-                        yoConfirme
-                          ? "bg-emerald-50 border-emerald-200 text-emerald-700"
-                          : "bg-slate-50 border-slate-200 text-slate-600"
-                      }`}
-                    >
-                      <span className="text-xs font-medium">
-                        {isOwnerOfSolicitada ? "Tú (solicitada)" : "Tú (ofrecida)"}
-                      </span>
-                      <span className="text-[11px]">
-                        {yoConfirme ? "✔ Confirmado" : "Pendiente"}
-                      </span>
-                    </span>
-                    <span
-                      className={`inline-flex items-center gap-2 px-2 py-1 rounded border ${
-                        contraparteConfirmo
-                          ? "bg-emerald-50 border-emerald-200 text-emerald-700"
-                          : "bg-slate-50 border-slate-200 text-slate-600"
-                      }`}
-                    >
-                      <span className="text-xs font-medium">Contraparte</span>
-                      <span className="text-[11px]">
-                        {contraparteConfirmo ? "✔ Confirmado" : "Pendiente"}
-                      </span>
-                    </span>
-                  </div>
-                </div>
-              )}
-
-              {bizErr && (
-                <div className="mt-4">
-                  <AlertErr>{bizErr}</AlertErr>
-                </div>
-              )}
-
-              {/* PENDIENTE */}
-              {visibleEstado === 1 && soyParte && (
-                <div className="mt-6 rounded-2xl border p-5 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 bg-amber-50/40">
-                  <div className="text-sm">
-                    {isOwnerOfSolicitada ? (
-                      <>
-                        Este trueque está <b>pendiente</b>. Puedes{" "}
-                        <b>aceptarlo</b> para continuar o <b>cancelarlo</b> si no
-                        te interesa.
-                      </>
-                    ) : (
-                      <>
-                        Este trueque está <b>pendiente</b>. Queda a la espera de
-                        que el dueño de la <b>publicación solicitada</b> acepte.
-                        Si ya no te interesa, puedes <b>cancelar</b>.
-                      </>
-                    )}
-                  </div>
-                  <div className="flex gap-2">
-                    {isOwnerOfSolicitada && (
-                      <button
-                        className="btn bg-blue-600 text-white border border-blue-600 hover:bg-white hover:text-blue-600 transition-colors disabled:opacity-60"
-                        disabled={busy}
-                        onClick={openAccept}
-                      >
-                        Aceptar
-                      </button>
-                    )}
-                    <button
-                      className="btn bg-blue-600 text-white border border-blue-600 hover:bg-white hover:text-blue-600 transition-colors disabled:opacity-60"
-                      disabled={busy}
-                      onClick={openCancel}
-                    >
-                      Cancelar
-                    </button>
-                  </div>
-                </div>
-              )}
-
-              {/* ACEPTADO */}
-              {visibleEstado === 4 && soyParte && (
-                <div className="mt-6 rounded-2xl border p-5 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 bg-blue-50/35">
-                  <div className="text-sm">
-                    El trueque está <b>aceptado</b>. Cuando se concrete en la
-                    vida real, marca como <b>realizado</b>.
-                    {yoConfirme
-                      ? " Ya registraste tu confirmación. Ahora solo la contraparte puede cancelar si aún no lo ha marcado."
-                      : " Si finalmente no se hará y todavía no lo has marcado como realizado, puedes cancelarlo."}
-                  </div>
-                  <div className="flex gap-2">
-                    {/* Solo puede marcar como realizado si aún no lo ha hecho */}
-                    {!yoConfirme && (
-                      <button
-                        className="btn bg-blue-600 text-white border border-blue-600 hover:bg-white hover:text-blue-600 transition-colors disabled:opacity-60"
-                        disabled={busy}
-                        onClick={openDone}
-                      >
-                        Marcar como realizado
-                      </button>
-                    )}
-
-                    {/* Solo puede cancelar quien NO ha marcado como realizado */}
-                    {!yoConfirme && (
-                      <button
-                        className="btn bg-blue-600 text-white border border-blue-600 hover:bg-white hover:text-blue-600 transition-colors disabled:opacity-60"
-                        disabled={busy}
-                        onClick={openCancel}
-                      >
-                        Cancelar
-                      </button>
-                    )}
-                  </div>
-                </div>
-              )}
-
-              {/* FINALIZADO */}
-              {visibleEstado === 2 && soyParte && (
-                <div className="mt-6 rounded-2xl border p-5 bg-emerald-50/70 text-emerald-800">
-                  <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-                    <div className="text-sm">
-                      Este intercambio está <b>finalizado</b>. ¡Gracias por usar
-                      TeLoCambio! 🎉
-                    </div>
-                    <div className="flex items-center gap-2">
-                      {miValoracion ? (
-                        <span className="inline-flex items-center gap-2 text-sm text-slate-700 bg-white border border-slate-200 rounded px-3 py-1.5">
-                          Tu valoración:{" "}
-                          <span className="text-amber-500 text-base">
-                            {"★".repeat(miValoracion.puntaje)}
-                            {"☆".repeat(Math.max(0, 5 - miValoracion.puntaje))}
-                          </span>
-                        </span>
-                      ) : (
-                        puedoCalificar && (
-                          <button
-                            className="btn bg-blue-600 text-white border border-blue-600 hover:bg-white hover:text-blue-600 transition-colors"
-                            onClick={() => {
-                              setRatingErr(null);
-                              setRatingOpen(true);
-                            }}
-                          >
-                            Calificar contraparte
-                          </button>
-                        )
-                      )}
-                    </div>
-                  </div>
-                  {miValoracion?.comentario && (
-                    <div className="mt-2 text-sm text-slate-700">
-                      <span className="text-slate-500">Comentario: </span>
-                      {miValoracion.comentario}
-                    </div>
-                  )}
-                </div>
-              )}
-
-              {/* CANCELADO */}
-              {visibleEstado === 3 && soyParte && (
-                <div className="mt-6 rounded-2xl border p-5 bg-rose-50/80 text-rose-800 text-sm">
-                  Este intercambio fue <b>cancelado</b>.
-                </div>
-              )}
             </div>
           </div>
 

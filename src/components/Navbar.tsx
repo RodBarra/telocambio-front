@@ -2,6 +2,7 @@
 import { Link, NavLink, useLocation, useNavigate } from "react-router-dom";
 import { useAuth } from "../context/AuthContext";
 import { useEffect, useRef, useState } from "react";
+import { getBadge } from "../services/notificaciones";
 
 export default function Navbar() {
   const { user, logout } = useAuth();
@@ -9,6 +10,7 @@ export default function Navbar() {
   const location = useLocation();
   const [open, setOpen] = useState(false);
   const panelRef = useRef<HTMLDivElement>(null);
+  const [notifBadge, setNotifBadge] = useState<number | null>(null); 
 
   if (!user) return null;
 
@@ -21,6 +23,12 @@ export default function Navbar() {
   const comunidadNombreFromUser =
     (user as any).comunidad_nombre ??
     (user as any).comunidad?.nombre ??
+    null;
+
+  // Código de comunidad (solo lo usaremos para moderadores)
+  const comunidadCodigoFromUser =
+    (user as any).comunidad_codigo ??
+    (user as any).comunidad?.codigo ??
     null;
 
   const comunidadLabel =
@@ -45,18 +53,46 @@ export default function Navbar() {
   const isMyProfile = location.pathname === "/perfil";
 
   // Redirección inicial
-  useEffect(() => {
-    const path = location.pathname;
-    if (isAdmin) {
-      if (path === "/" || path === "/dashboard" || path === "/login") {
-        nav("/mod/usuarios", { replace: true });
-      }
-    } else if (isMod || isRes) {
-      if (path === "/" || path === "/dashboard" || path === "/login") {
-        nav("/publicaciones", { replace: true });
-      }
+useEffect(() => {
+  const path = location.pathname;
+  if (isAdmin) {
+    if (path === "/" || path === "/dashboard" || path === "/login") {
+      nav("/mod/usuarios", { replace: true });
     }
-  }, [isAdmin, isMod, isRes, location.pathname, nav]);
+  } else if (isMod || isRes) {
+    if (path === "/" || path === "/dashboard" || path === "/login") {
+      nav("/publicaciones", { replace: true });
+    }
+  }
+}, [isAdmin, isMod, isRes, location.pathname, nav]);
+
+// Badge de notificaciones no leídas
+useEffect(() => {
+  let alive = true;
+
+  const refresh = () => {
+    getBadge()
+      .then((res) => {
+        if (!alive) return;
+        setNotifBadge(res.no_leidas ?? 0);
+      })
+      .catch(() => {
+        if (!alive) return;
+        setNotifBadge(null);
+      });
+  };
+
+  // Primera carga
+  refresh();
+
+  // Escucha eventos globales
+  window.addEventListener("notif-updated", refresh);
+
+  return () => {
+    alive = false;
+    window.removeEventListener("notif-updated", refresh);
+  };
+}, []);
 
   // Cerrar panel al click afuera o ESC
   useEffect(() => {
@@ -235,6 +271,13 @@ export default function Navbar() {
                 <path d="M15 17h5l-1.4-1.4A2 2 0 0 1 18 14.2V11a6 6 0 1 0-12 0v3.2c0 .5-.2 1-.6 1.4L4 17h5" />
                 <path d="M9 17a3 3 0 0 0 6 0" />
               </svg>
+
+              {/* Badge rojo si hay no leídas */}
+              {notifBadge !== null && notifBadge > 0 && (
+                <span className="absolute -top-0.5 -right-0.5 inline-flex h-4 min-w-[1rem] items-center justify-center rounded-full bg-red-500 px-1 text-[10px] font-bold text-white shadow-sm">
+                  {notifBadge > 9 ? "9+" : notifBadge}
+                </span>
+              )}
             </Link>
 
             <button
@@ -249,47 +292,73 @@ export default function Navbar() {
 
       {/* BANDA DE COMUNIDAD (debajo del navbar, sin tocar lo de arriba) */}
       {isInComunidad && comunidadLabel && (
-  <div className="border-b border-slate-100 bg-white">
-    <div className="mx-auto max-w-7xl px-4 py-2">
-      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2 sm:gap-3">
-        {/* Comunidad actual */}
-        <div className="flex items-center justify-center sm:justify-start gap-2 min-w-0">
-          <div className="inline-flex h-9 w-9 items-center justify-center rounded-2xl bg-gradient-to-tr from-emerald-400 to-sky-500 text-white shadow-sm text-lg">
-            🏘️
-          </div>
-          <div className="min-w-0 text-center sm:text-left">
-            <div className="text-[10px] font-semibold uppercase tracking-[0.16em] text-slate-500">
-              Comunidad actual
-            </div>
-            <div className="text-xs sm:text-sm font-semibold text-slate-900 truncate">
-              {comunidadLabel}
+        <div className="border-b border-slate-100 bg-white">
+          <div className="mx-auto max-w-7xl px-4 py-2">
+            <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2 sm:gap-3">
+              {/* Comunidad actual + (código para moderador) */}
+              <div className="flex items-center justify-center sm:justify-start gap-2 min-w-0">
+                <div className="inline-flex h-9 w-9 items-center justify-center rounded-2xl bg-gradient-to-tr from-emerald-400 to-sky-500 text-white shadow-sm text-lg">
+                  🏘️
+                </div>
+                <div className="min-w-0 text-center sm:text-left">
+                  <div className="text-[10px] font-semibold uppercase tracking-[0.16em] text-slate-500">
+                    Comunidad actual
+                  </div>
+
+                  {/* Nombre + código en una sola fila */}
+                  <div className="mt-0.5 flex items-center justify-center sm:justify-start gap-2">
+                    <div className="text-xs sm:text-sm font-semibold text-slate-900 truncate">
+                      {comunidadLabel}
+                    </div>
+
+                    {/* Código visible SOLO para moderadores */}
+                    {/* Código visible SOLO para moderador — badge premium */}
+                    {isMod && comunidadCodigoFromUser && (
+                      <span
+                        className="
+                          inline-flex items-center 
+                          rounded-xl 
+                          bg-gradient-to-r from-emerald-500 to-sky-600
+                          text-white 
+                          shadow-md 
+                          px-4 py-1.5 
+                          text-xs sm:text-sm font-bold tracking-wide
+                          border border-white/10
+                          [text-shadow:0px_1px_2px_rgba(0,0,0,0.35)]
+                        "
+                      >
+                        <span className="mr-1 opacity-95 font-semibold">Código:</span>
+                        <span className="font-mono">{comunidadCodigoFromUser}</span>
+                      </span>
+                    )}
+                  </div>
+                </div>
+              </div>
+
+
+              {/* Rol + mensaje de contexto */}
+              <div className="flex flex-wrap items-center justify-center sm:justify-end gap-2 text-[11px] text-slate-600">
+                <span className="inline-flex items-center gap-1 rounded-full bg-slate-50 px-2.5 py-0.5 border border-slate-200">
+                  <span className="text-xs" aria-hidden="true">
+                    👤
+                  </span>
+                  <span className="font-medium">{rolLabel}</span>
+                </span>
+
+                <span className="inline-flex items-center gap-2 rounded-full bg-slate-900/95 text-slate-50 px-3 py-0.5 text-[10px] shadow-sm">
+                  <span
+                    className="h-1.5 w-1.5 rounded-full bg-emerald-400 animate-pulse"
+                    aria-hidden="true"
+                  />
+                  <span className="whitespace-nowrap sm:whitespace-normal">
+                    Estás navegando dentro de tu comunidad
+                  </span>
+                </span>
+              </div>
             </div>
           </div>
         </div>
-
-        {/* Rol + mensaje de contexto */}
-        <div className="flex flex-wrap items-center justify-center sm:justify-end gap-2 text-[11px] text-slate-600">
-          <span className="inline-flex items-center gap-1 rounded-full bg-slate-50 px-2.5 py-0.5 border border-slate-200">
-            <span className="text-xs" aria-hidden="true">
-              👤
-            </span>
-            <span className="font-medium">{rolLabel}</span>
-          </span>
-
-          <span className="inline-flex items-center gap-2 rounded-full bg-slate-900/95 text-slate-50 px-3 py-0.5 text-[10px] shadow-sm">
-            <span
-              className="h-1.5 w-1.5 rounded-full bg-emerald-400 animate-pulse"
-              aria-hidden="true"
-            />
-            <span className="whitespace-nowrap sm:whitespace-normal">
-              Estás navegando dentro de tu comunidad
-            </span>
-          </span>
-        </div>
-      </div>
-    </div>
-  </div>
-)}
+      )}
 
 
       {/* Backdrop + Panel Mobile */}

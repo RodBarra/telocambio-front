@@ -37,7 +37,7 @@ export default function PublicNavbar() {
 
         {/* Desktop */}
         <div className="hidden md:flex items-center gap-1">
-          <Item to="/ofertas">Ofertas</Item>
+          <Item to="/planes">Planes</Item>
           <Item to="/nosotros">Nosotros</Item>
           <Item to="/como-funciona">Cómo funciona</Item>
           <Item to="/contacto">Contacto</Item>
@@ -63,7 +63,7 @@ export default function PublicNavbar() {
       {open && (
         <div className="md:hidden border-t border-slate-200 bg-white">
           <div className="mx-auto max-w-7xl px-2 py-2 flex flex-col">
-            <Item to="/ofertas">Ofertas</Item>
+            <Item to="/planes">Planes</Item>
             <Item to="/nosotros">Nosotros</Item>
             <Item to="/como-funciona">Cómo funciona</Item>
             <Item to="/contacto">Contacto</Item>

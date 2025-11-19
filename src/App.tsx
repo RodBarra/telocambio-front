@@ -20,6 +20,9 @@ import Ofertas from "./pages/Ofertas";
 import Nosotros from "./pages/Nosotros";
 import ComoFunciona from "./pages/ComoFunciona";
 import Contacto from "./pages/Contacto";
+import Privacidad from "./pages/Privacidad";
+import Terminos from "./pages/Terminos";
+import LegalShell from "./components/LayoutNeutral";
 
 // marketplace
 import {
@@ -73,10 +76,20 @@ export default function App() {
       <Route path="/" element={<Navigate to="/login" replace />} />
       <Route path="/login" element={<PublicShell><Login /></PublicShell>} />
       <Route path="/register" element={<PublicShell><Register /></PublicShell>} />
-      <Route path="/ofertas" element={<PublicShell><Ofertas /></PublicShell>} />
+      <Route path="/planes" element={<PublicShell><Ofertas /></PublicShell>} />
       <Route path="/nosotros" element={<PublicShell><Nosotros /></PublicShell>} />
       <Route path="/como-funciona" element={<PublicShell><ComoFunciona /></PublicShell>} />
       <Route path="/contacto" element={<PublicShell><Contacto /></PublicShell>} />
+
+      {/* Generales */}
+      <Route
+        path="/privacidad"
+        element={<LegalShell><Privacidad /></LegalShell>}
+      />
+      <Route
+        path="/terminos"
+        element={<LegalShell><Terminos /></LegalShell>}
+      />
 
       {/* Marketplace */}
       <Route

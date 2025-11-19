@@ -5,6 +5,8 @@ export type JwtUser = {
   correo: string;
   rol_usuario_id: number;
   comunidad_id: number | null;
+  comunidad_nombre: string | null;
+  comunidad_codigo: string | null;
 };
 
 export type LoginResp = {
@@ -21,7 +23,6 @@ export const AuthApi = {
 
   refresh: (refresh: string) => http.post<{ access: string }>("/auth/refresh", { refresh }),
 
-  // NUEVO: verificación de acceso (devuelve ok, tipo_id, etc.)
   verifyAccess: (payload: { codigo: string; correo: string }) =>
     http.post<{ ok: boolean; comunidad_id?: number; tipo_id?: 1 | 2; reason?: string }>(
       "/auth/verify-access",

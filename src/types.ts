@@ -109,11 +109,10 @@ export type PublicacionListItem = {
   creada_en: string;
   actualizada_en: string;
   primera_imagen?: string | null;
-
-  // NUEVO: contadores (opcionales)
   ofertas_count_total?: number;
   ofertas_count_pendientes?: number;
   bloqueada?: boolean;
+  intercambio_en_progreso?: boolean;
 };
 
 export type PageMeta = {

@@ -154,6 +154,8 @@ export default function PublicacionesList() {
         processed = results.filter(
           (r) => r.estado_publicacion_id === 1 || r.estado_publicacion_id === 2
         );
+      } else {
+        processed = results.filter((r) => !r.intercambio_en_progreso);
       }
 
       setItems(processed);
