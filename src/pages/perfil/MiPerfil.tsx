@@ -335,11 +335,6 @@ export default function MiPerfil() {
                 <div>
                   <h2 className="text-base font-semibold flex items-center gap-2">
                     📊 Resumen
-                    {promedio != null && cantidadRatings && cantidadRatings > 0 && (
-                      <span className="inline-flex items-center gap-1 rounded-full bg-amber-50 px-2 py-[2px] text-[11px] font-semibold text-amber-700 border border-amber-200">
-                        ⭐ {promedio.toFixed(2)} / 5
-                      </span>
-                    )}
                   </h2>
                   <p className="mt-1 text-xs text-slate-500">
                     Un vistazo rápido a tu reputación y actividad dentro de la comunidad.
@@ -364,9 +359,6 @@ export default function MiPerfil() {
                   <div className="text-right">
                     <div className="text-3xl md:text-4xl font-bold text-slate-900 leading-none">
                       {promedio != null ? promedio.toFixed(2) : "0.00"}
-                    </div>
-                    <div className="text-xs text-slate-500 mt-1">
-                      sobre 5 estrellas
                     </div>
                   </div>
                 </div>

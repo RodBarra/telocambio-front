@@ -15,7 +15,7 @@ import type { Categoria, PublicacionListItem } from "../../types";
 // ==============================
 // CONFIGURACIÓN GLOBAL
 // ==============================
-const PAGE_SIZE = 12;
+const PAGE_SIZE = 10; // ✅ lo que pediste
 const CACHE_KEY = "publicaciones_filtros_v1";
 
 type Orden = "recientes" | "alfabetico" | "ofertas_desc";
@@ -31,13 +31,24 @@ function normalizeCats(input: any): Categoria[] {
   return [];
 }
 
-function normalizeList(input: any): { results: PublicacionListItem[]; total: number } {
+function normalizeList(input: any): {
+  results: PublicacionListItem[];
+  total: number;
+} {
   if (Array.isArray(input)) return { results: input, total: input.length };
+
   const results = Array.isArray(input?.results) ? input.results : [];
+
+  // ✅ IMPORTANTE:
+  // tu service devuelve { results, meta:{count,page,page_size} }
+  // DRF devuelve { count, results }
   const total =
+    (typeof input?.meta?.count === "number" && input.meta.count) ||
+    (typeof input?.count === "number" && input.count) ||
     (typeof input?.meta?.total === "number" && input.meta.total) ||
     (typeof input?.total === "number" && input.total) ||
     results.length;
+
   return { results, total };
 }
 
@@ -95,6 +106,10 @@ export default function PublicacionesList() {
   });
 
   const searchRef = useRef<HTMLInputElement | null>(null);
+
+  // requestId para evitar que respuestas viejas pisen el estado nuevo
+  const reqIdRef = useRef(0);
+
   const totalPaginas = useMemo(
     () => Math.max(1, Math.ceil(total / PAGE_SIZE)),
     [total]
@@ -126,61 +141,83 @@ export default function PublicacionesList() {
   }, [q, categoriaId, orden, mine]);
 
   // ==============================
-  // CARGA DE DATOS
+  // CATEGORÍAS (1 sola vez)
   // ==============================
-  const load = useCallback(async () => {
-    try {
-      setLoading(true);
-      setErr(null);
+  useEffect(() => {
+    let mounted = true;
+    (async () => {
+      try {
+        const catsRaw = await getCategorias();
+        if (mounted) setCategorias(normalizeCats(catsRaw));
+      } catch {
+        // no rompas el flujo por categorías
+      }
+    })();
+    return () => {
+      mounted = false;
+    };
+  }, []);
 
-      const [catsRaw, listRaw] = await Promise.all([
-        getCategorias(),
-        listPublicaciones({
+  // ==============================
+  // CARGA DE LISTADO (con stale-guard)
+  // ==============================
+  const loadList = useCallback(
+    async (opts?: { pageOverride?: number }) => {
+      const myReqId = ++reqIdRef.current;
+
+      try {
+        setLoading(true);
+        setErr(null);
+
+        const pageToUse = opts?.pageOverride ?? page;
+
+        const listRaw = await listPublicaciones({
           q,
           categoria_id: categoriaId,
           orden,
-          page,
+          page: pageToUse,
           page_size: PAGE_SIZE,
           mine,
-        }),
-      ]);
+        });
 
-      setCategorias(normalizeCats(catsRaw));
-      const { results, total } = normalizeList(listRaw);
+        if (myReqId !== reqIdRef.current) return; // ⛔ respuesta vieja
 
-      // En MODO MIS PUBLICACIONES: mostrar solo ACTIVAS u OCULTAS
-      let processed = results;
-      if (mine) {
-        processed = results.filter(
-          (r) => r.estado_publicacion_id === 1 || r.estado_publicacion_id === 2
-        );
-      } else {
-        processed = results.filter((r) => !r.intercambio_en_progreso);
+        const { results, total } = normalizeList(listRaw);
+
+        setItems(results);
+        setTotal(total);
+      } catch (e: any) {
+        if (myReqId !== reqIdRef.current) return;
+        setErr(e?.message || "Error al cargar publicaciones.");
+      } finally {
+        if (myReqId === reqIdRef.current) setLoading(false);
       }
+    },
+    [q, categoriaId, orden, page, mine]
+  );
 
-      setItems(processed);
-      setTotal(mine ? processed.length : total);
-    } catch (e: any) {
-      setErr(e?.message || "Error al cargar publicaciones.");
-    } finally {
-      setLoading(false);
-    }
-  }, [q, categoriaId, orden, page, mine]);
-
+  // ✅ Carga normal al cambiar página o filtros (excepto q, q va con debounce)
   useEffect(() => {
-    load();
-  }, [load]);
+    loadList();
+  }, [categoriaId, orden, page, mine, loadList]);
 
   // ==============================
-  // BÚSQUEDA (DEBOUNCED)
+  // BÚSQUEDA (DEBOUNCED) ✅ FIX REAL
   // ==============================
+  // Antes: dependía de loadList => loadList cambia con page => te volvía a page 1.
+  // Ahora: solo se dispara con q/categoria/orden/mine, resetea la página y luego carga.
+  const loadListRef = useRef(loadList);
+  useEffect(() => {
+    loadListRef.current = loadList;
+  }, [loadList]);
+
   useEffect(() => {
     const t = setTimeout(() => {
       setPage(1);
-      load();
+      loadListRef.current({ pageOverride: 1 });
     }, 450);
     return () => clearTimeout(t);
-  }, [q, load]);
+  }, [q, categoriaId, orden, mine]);
 
   // ==============================
   // EVENTOS
@@ -197,10 +234,9 @@ export default function PublicacionesList() {
       return;
     }
     await toggleEstado(item);
-    await load();
+    await loadList();
   };
 
-  // ——— abrir modal para eliminar 1
   const onDelete = (id: number) => {
     const it = items.find((x) => x.id === id);
     const titulo = it?.titulo?.trim();
@@ -215,7 +251,6 @@ export default function PublicacionesList() {
     });
   };
 
-  // ——— confirmar borrado
   const confirmDelete = async () => {
     try {
       setConfirm((c) => ({ ...c, loading: true }));
@@ -227,7 +262,7 @@ export default function PublicacionesList() {
         description: "",
         loading: false,
       });
-      await load();
+      await loadList();
     } catch (e: any) {
       setErr(e?.message || "No se pudo eliminar.");
       setConfirm((c) => ({ ...c, loading: false }));
@@ -240,7 +275,7 @@ export default function PublicacionesList() {
     setOrden("recientes");
     setMine(false);
     setPage(1);
-    load();
+    loadList({ pageOverride: 1 });
     searchRef.current?.focus();
   };
 
@@ -315,7 +350,6 @@ export default function PublicacionesList() {
                 </button>
               )}
 
-              {/* NUEVA PUBLICACIÓN – botón azul primario */}
               <Link
                 to="/publicaciones/nueva"
                 className="inline-flex items-center justify-center rounded-xl px-4 py-2 text-sm font-semibold 
@@ -328,10 +362,9 @@ export default function PublicacionesList() {
             </div>
           </div>
 
-          {/* FILTROS – SOLO EN PANEL GENERAL (no en Mis publicaciones) */}
+          {/* FILTROS */}
           {!mine && (
             <div className="mb-6 rounded-2xl border border-slate-200 bg-slate-50/80 p-4 sm:p-5">
-              {/* Cabecera del filtro */}
               <div className="flex items-center gap-3 mb-4">
                 <div className="flex h-9 w-9 items-center justify-center rounded-full bg-blue-600 text-white shadow-md">
                   🔍
@@ -347,9 +380,7 @@ export default function PublicacionesList() {
                 </div>
               </div>
 
-              {/* Contenido de filtros */}
               <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-12 items-end">
-                {/* Buscar */}
                 <div className="xl:col-span-4 md:col-span-2">
                   <label className="block text-xs font-semibold text-slate-600 mb-1">
                     Buscar por título o descripción
@@ -370,7 +401,6 @@ export default function PublicacionesList() {
                   </div>
                 </div>
 
-                {/* Categoría */}
                 <div className="xl:col-span-3">
                   <label className="block text-xs font-semibold text-slate-600 mb-1">
                     Categoría
@@ -395,7 +425,6 @@ export default function PublicacionesList() {
                   </select>
                 </div>
 
-                {/* Orden */}
                 <div className="xl:col-span-2">
                   <label className="block text-xs font-semibold text-slate-600 mb-1">
                     Orden
@@ -413,9 +442,7 @@ export default function PublicacionesList() {
                   </select>
                 </div>
 
-                {/* Botones – Mis publicaciones / Limpiar */}
                 <div className="xl:col-span-3 flex md:flex-row flex-col gap-2 items-stretch md:items-end">
-                  {/* MIS PUBLICACIONES – activa modo privado */}
                   <button
                     type="button"
                     onClick={() => {
@@ -429,7 +456,6 @@ export default function PublicacionesList() {
                     Mis publicaciones
                   </button>
 
-                  {/* LIMPIAR – mismo estilo azul */}
                   <button
                     type="button"
                     onClick={clearFilters}
@@ -446,7 +472,6 @@ export default function PublicacionesList() {
             </div>
           )}
 
-          {/* ERRORES */}
           {err && <AlertErr>{err}</AlertErr>}
 
           {/* LISTADO */}
@@ -489,9 +514,11 @@ export default function PublicacionesList() {
                     <PublicationCard
                       item={{
                         ...it,
-                        // forzar refresco de thumbnail si se actualiza
+                        // ✅ cache buster estable
                         primera_imagen: it.primera_imagen
-                          ? `${it.primera_imagen}?t=${Date.now()}`
+                          ? `${it.primera_imagen}?v=${encodeURIComponent(
+                              it.actualizada_en || it.creada_en || ""
+                            )}`
                           : null,
                       }}
                       showActions={mine && canMutate(it)}
@@ -560,3 +587,4 @@ export default function PublicacionesList() {
     </div>
   );
 }
+ 

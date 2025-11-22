@@ -33,31 +33,31 @@ function tipoMeta(tipo: Notification["tipo"]) {
     case "OFERTA_RECIBIDA":
       return {
         label: "Oferta recibida",
-        emoji: "\uD83D\uDCE9", // 📩
+        emoji: "📩", 
         pillClass: "bg-emerald-50 text-emerald-700 border border-emerald-100",
       };
     case "OFERTA_ACEPTADA":
       return {
         label: "Oferta aceptada",
-        emoji: "\u2705", // ✅
+        emoji: "✅", 
         pillClass: "bg-blue-50 text-blue-700 border border-blue-100",
       };
     case "INTERCAMBIO_MARCADO_REALIZADO":
       return {
         label: "Marcado realizado",
-        emoji: "\uD83D\uDD01", // 🔁
+        emoji: "🔁", 
         pillClass: "bg-amber-50 text-amber-700 border border-amber-100",
       };
     case "INTERCAMBIO_FINALIZADO_PENDIENTE_VALORACION":
       return {
         label: "Pendiente de valoración",
-        emoji: "\u2B50", // ⭐
+        emoji: "⭐", 
         pillClass: "bg-purple-50 text-purple-700 border border-purple-100",
       };
     default:
       return {
         label: tipo,
-        emoji: "\uD83D\uDD14", // 🔔
+        emoji: "🔔", 
         pillClass: "bg-slate-50 text-slate-700 border border-slate-100",
       };
   }
@@ -199,7 +199,7 @@ export default function NotificationsPage() {
             onClick={() => nav("/publicaciones")}
             className="inline-flex items-center justify-center rounded-xl px-3 py-1.5 text-sm font-semibold bg-blue-600 text-white border border-blue-600 hover:bg-white hover:text-blue-600 transition-colors mb-4"
           >
-            \u2190 Volver
+            ← Volver
           </button>
 
           <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 mb-4">

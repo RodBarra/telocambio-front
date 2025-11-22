@@ -12,7 +12,7 @@ type ListParams = {
   q?: string;
   categoria_id?: number;
   estado_publicacion_id?: number;
-  orden?: "recientes" | "alfabetico";
+  orden?: "recientes" | "alfabetico" | "ofertas_desc";
   page?: number;
   page_size?: number;
   mine?: boolean;
@@ -20,7 +20,7 @@ type ListParams = {
 
 type ListResponse = {
   results: PublicacionListItem[];
-  meta: PageMeta;
+  meta: PageMeta; // {count, page, page_size}
 };
 
 type UploadImgsResponse = {
@@ -48,7 +48,9 @@ export async function getCategorias(): Promise<Categoria[]> {
 }
 
 // ---------------------- Publicaciones ----------------------
-export async function listPublicaciones(params: ListParams = {}): Promise<ListResponse> {
+export async function listPublicaciones(
+  params: ListParams = {}
+): Promise<ListResponse> {
   const qs = new URLSearchParams();
   if (params.q) qs.set("q", params.q);
   if (params.categoria_id) qs.set("categoria_id", String(params.categoria_id));
@@ -62,19 +64,39 @@ export async function listPublicaciones(params: ListParams = {}): Promise<ListRe
   const query = qs.toString() ? `?${qs.toString()}` : "";
   const data: any = await request(`/publicaciones/publicaciones/${query}`);
 
-  // 🔧 Normalización para soportar respuesta como array plano o como {results, meta}
+   // ✅ Caso array plano (sin paginación)
   if (Array.isArray(data)) {
+    const page = params.page ?? 1;
+    const pageSize = params.page_size ?? data.length;
     return {
       results: data as PublicacionListItem[],
       meta: {
-        count: (data as any[]).length,
-        page: params.page ?? 1,
-        page_size: params.page_size ?? (data as any[]).length,
+        count: data.length,
+        page,
+        page_size: pageSize,
       },
     };
   }
+
+  // ✅ Caso DRF estándar: {count, next, previous, results}
   if (Array.isArray(data?.results)) {
-    return data as ListResponse;
+    const page = params.page ?? 1;
+    const pageSize = params.page_size ?? data.results.length;
+    const count =
+      (typeof data.count === "number" && data.count) ||
+      (typeof data.meta?.count === "number" && data.meta.count) ||
+      (typeof data.meta?.total === "number" && data.meta.total) ||
+      (typeof data.total === "number" && data.total) ||
+      data.results.length;
+
+    return {
+      results: data.results as PublicacionListItem[],
+      meta: {
+        count,
+        page,
+        page_size: pageSize,
+      },
+    };
   }
   return { results: [], meta: { count: 0, page: 1, page_size: 0 } };
 }

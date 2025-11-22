@@ -29,7 +29,7 @@ export default function ModUsuarios() {
 
   // filtros / estado UI
   const [q, setQ] = useState("");
-  const [rol, setRol] = useState<"" | 1 | 2 | 3>("");
+  const [rol, setRol] = useState<"" | 2 | 3>("");
   const [estado, setEstado] = useState<"" | number>("");
   const [comunidadId, setComunidadId] = useState<number | "">("");
   const [sort, setSort] = useState<Sort>({ key: "id", dir: "desc" });
@@ -61,7 +61,7 @@ export default function ModUsuarios() {
       page_size: pageSize,
     };
     if (isAdmin) {
-      if (rol) p.rol = rol as 1 | 2 | 3;
+      if (rol) p.rol = rol as 2 | 3;
       if (estado) p.estado = estado as number;
       if (comunidadId) p.comunidad_id = Number(comunidadId);
     } else {
@@ -227,7 +227,6 @@ export default function ModUsuarios() {
                   <option value="">(todos)</option>
                   <option value={3}>Residente</option>
                   <option value={2}>Moderador</option>
-                  <option value={1}>Admin</option>
                 </select>
               ) : (
                 <select
@@ -431,13 +430,12 @@ export default function ModUsuarios() {
                             update(u.id, {
                               rol_usuario_id: Number(
                                 e.target.value
-                              ) as 1 | 2 | 3,
+                              ) as 2 | 3,
                             })
                           }
                         >
                           <option value={3}>Residente</option>
                           <option value={2}>Moderador</option>
-                          <option value={1}>Admin</option>
                         </select>
                       ) : (
                         <span className="inline-flex items-center rounded-full border border-slate-200 px-2 py-0.5 text-xs text-slate-700 bg-slate-50 whitespace-nowrap">

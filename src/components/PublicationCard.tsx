@@ -95,23 +95,27 @@ export default function PublicationCard({
 
   return (
     <div
-      className={`bg-white rounded-2xl border shadow-sm overflow-hidden flex flex-col 
-                  hover:shadow-lg hover:-translate-y-0.5 transition-all duration-200
-                  ${enIntercambio ? "border-blue-300 bg-blue-50/60" : "border-slate-200"}`}
-    >
+        className={`rounded-2xl border shadow-sm overflow-hidden flex flex-col 
+                    bg-white/95 backdrop-blur-[1px]
+                    hover:shadow-lg hover:-translate-y-0.5 transition-all duration-200
+                    ${enIntercambio ? "border-blue-300 bg-blue-50/60" : "border-slate-200"}`}
+      >
       <Link
         to={`/publicaciones/${item.id}`}
         className="block group focus:outline-none focus:ring-2 focus:ring-blue-400 focus:ring-offset-2 focus:ring-offset-white"
       >
-        <div className="relative bg-slate-50">
-          <div className="aspect-[4/3] md:aspect-square overflow-hidden">
-            <img
-              src={img}
-              alt={item.titulo}
-              className="w-full h-full object-cover object-center select-none transition-transform duration-300 group-hover:scale-[1.03]"
-              loading="lazy"
-            />
-          </div>
+        <div className="relative bg-gradient-to-b from-slate-100 to-white">
+      {/* marco suave / “passepartout” */}
+      <div className="p-2">
+        <div className="aspect-[4/3] md:aspect-square overflow-hidden rounded-xl bg-white ring-1 ring-slate-200 shadow-[inset_0_0_0_1px_rgba(0,0,0,0.02)]">
+          <img
+            src={img}
+            alt={item.titulo}
+            className="w-full h-full object-cover object-center select-none transition-transform duration-300 group-hover:scale-[1.03]"
+            loading="lazy"
+          />
+        </div>
+      </div>
 
           {item.estado_publicacion_id !== 1 && (
             <span
@@ -180,7 +184,7 @@ export default function PublicationCard({
       </Link>
 
       {showActions && (
-  <div className="px-3 pb-3 mt-auto">
+  <div className="mt-auto border-t border-slate-200 bg-slate-50 px-3 py-3">
     {/* Desktop / tablet grande: 3 botones en fila */}
     <div className="hidden sm:flex items-center gap-2 flex-nowrap justify-center">
       <button

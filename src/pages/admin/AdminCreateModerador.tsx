@@ -92,7 +92,7 @@ export default function CrearComunidad() {
         apellidos: form.apellidos.trim(),
         telefono: form.telefono.trim() || undefined,
       });
-      setOk("Comunidad creada correctamente.");
+      setOk("Moderador creado correctamente.");
 
       setForm({
         comunidad_id: preId || 0,
