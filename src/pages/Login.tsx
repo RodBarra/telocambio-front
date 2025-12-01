@@ -155,8 +155,14 @@ export default function Login() {
                 </Link>
               </div>
               <div className="mt-2">
-                <span className="font-medium text-slate-400">
-                  {/* En el futuro: ¿Olvidó su clave? */}
+                <span className="font-medium text-slate-600">
+                  ¿Olvidaste tu contraseña?{" "}
+                  <Link
+                    to="/auth/recuperar"
+                    className="font-medium text-indigo-600 hover:underline"
+                  >
+                    Recuperar acceso
+                  </Link>
                 </span>
               </div>
             </div>

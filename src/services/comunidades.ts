@@ -9,7 +9,9 @@ export type Comunidad = {
   estado_comunidad_id?: number | null;
   codigo: string;
   creado_en?: string;
-  moderador_correo?: string | null; 
+  moderador_correo?: string | null;
+  plan_id?: number | null;
+  plan_nombre?: string | null;
 };
 
 export type ComunidadListParams = {
@@ -29,6 +31,20 @@ export type ComunidadListResponse = {
   page_size: number;
 };
 
+export type Plan = {
+  id: number;
+  nombre: string;
+  max_usuarios: number | null;
+  // DRF suele devolver Decimal como string
+  precio_mensual: string;
+  es_recomendado: boolean;
+  activo: boolean;
+};
+
+export const PlanesApi = {
+  list: () => http.get<Plan[]>("/plan/"),
+};
+
 export const ComunidadesApi = {
   list: (params?: ComunidadListParams) =>
     http.get<ComunidadListResponse>("/comunidades/list", { params }),
@@ -38,6 +54,7 @@ export const ComunidadesApi = {
     tipo_id: 1 | 2;
     direccion?: string;
     codigo: string;
+    plan_id?: number;
   }) => http.post("/comunidades/", payload),
 
   get: (id: number) => http.get<Comunidad>(`/comunidades/${id}`),

@@ -26,6 +26,7 @@ export type Comunidad = {
   correo_contacto_admin: string;
   estado_comunidad_id?: number | null;
   codigo: string;
+  plan_id?: number | null;
 };
 
 /** ====== PADRÓN ====== */
@@ -200,4 +201,14 @@ export type UserPublic = {
     comentario?: string | null;
     creado_en?: string;
   }>;
+};
+
+/** ====== PLANES ====== */
+export type Plan = {
+  id: number;
+  nombre: string;
+  max_usuarios: number | null;
+  precio_mensual: string;
+  es_recomendado: boolean;
+  activo: boolean;
 };

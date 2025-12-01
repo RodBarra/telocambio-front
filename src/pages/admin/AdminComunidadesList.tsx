@@ -4,6 +4,8 @@ import {
   ComunidadesApi,
   type Comunidad,
   type ComunidadListParams,
+  PlanesApi,
+  type Plan,
 } from "../../services/comunidades";
 
 type Sort = { key: string; dir: "asc" | "desc" };
@@ -61,9 +63,17 @@ export default function AdminComunidadesList() {
   const [loading, setLoading] = useState(false);
   const [err, setErr] = useState<string | null>(null);
 
+  // 🔹 Planes en memoria para mostrar/editar
+  const [planes, setPlanes] = useState<Plan[]>([]);
+  const [planesError, setPlanesError] = useState<string | null>(null);
+
   type EditBuffer = Record<
     number,
-    { nombre?: string; estado_comunidad_id?: number | null }
+    {
+      nombre?: string;
+      estado_comunidad_id?: number | null;
+      plan_id?: number | null;
+    }
   >;
   const [edit, setEdit] = useState<EditBuffer>({});
 
@@ -93,13 +103,34 @@ export default function AdminComunidadesList() {
     }
   };
 
+  // 🔹 cargar comunidades al cambiar filtros
   useEffect(() => {
     load();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [params]);
 
+  // 🔹 cargar planes una vez
+  useEffect(() => {
+    const loadPlanes = async () => {
+      try {
+        const { data } = await PlanesApi.list();
+        const list = Array.isArray(data) ? data : (data as any).items || [];
+        setPlanes((list as Plan[]).filter((p) => p.activo));
+      } catch {
+        setPlanesError("No se pudieron cargar los planes.");
+      }
+    };
+    loadPlanes();
+  }, []);
+
   const onSort = (key: string) => {
-    if (key === "acciones" || key === "moderador_correo") return;
+    // no ordenamos por estas columnas
+    if (
+      key === "acciones" ||
+      key === "moderador_correo" ||
+      key === "plan_id"
+    )
+      return;
     setSort((s) =>
       s.key === key
         ? { key, dir: s.dir === "asc" ? "desc" : "asc" }
@@ -121,19 +152,29 @@ export default function AdminComunidadesList() {
     const estChanged =
       e.estado_comunidad_id !== undefined &&
       e.estado_comunidad_id !== r.estado_comunidad_id;
-    return nameChanged || estChanged;
+    const planChanged =
+      e.plan_id !== undefined &&
+      (e.plan_id ?? null) !== (r.plan_id ?? null);
+    return nameChanged || estChanged || planChanged;
   };
 
   const save = async (r: Comunidad) => {
     const e = edit[r.id];
     if (!e) return;
-    const patch: { nombre?: string; estado_comunidad_id?: number } = {};
+    const patch: {
+      nombre?: string;
+      estado_comunidad_id?: number;
+      plan_id?: number | null;
+    } = {};
     if (e.nombre !== undefined && e.nombre !== r.nombre) patch.nombre = e.nombre!;
     if (
       e.estado_comunidad_id !== undefined &&
       e.estado_comunidad_id !== r.estado_comunidad_id
     )
       patch.estado_comunidad_id = e.estado_comunidad_id ?? undefined;
+    if (e.plan_id !== undefined && e.plan_id !== r.plan_id) {
+      patch.plan_id = e.plan_id ?? null;
+    }
 
     if (Object.keys(patch).length === 0) return;
 
@@ -162,6 +203,11 @@ export default function AdminComunidadesList() {
       key: "moderador_correo",
       label: "Moderador",
       cls: "min-w-[260px] hidden lg:table-cell",
+    },
+    {
+      key: "plan_id",
+      label: "Plan",
+      cls: "min-w-[160px]",
     },
     { key: "estado_comunidad_id", label: "Estado", cls: "min-w-[140px]" },
     {
@@ -202,7 +248,7 @@ export default function AdminComunidadesList() {
               Crear moderador
             </Link>
             <button
-              className="inline-flex items-center rounded-xl px-4 py-2 text-sm font-semibold bg-blue-600 text-white border border-blue-600 transition-all duration-200  hover:bg-white hover:text-blue-600 hover:border-blue-600 active:bg-blue-600 active:text-white active:border-blue-600"
+              className="inline-flex items-center rounded-xl px-4 py-2 text-sm font-semibold bg-blue-600 text-white border border-blue-600 transition-all duración-200  hover:bg-white hover:text-blue-600 hover:border-blue-600 active:bg-blue-600 active:text-white active:border-blue-600"
               onClick={() => navigate("/admin/comunidades/nueva")}
               title="Crear una nueva comunidad"
             >
@@ -235,7 +281,9 @@ export default function AdminComunidadesList() {
                 className="input mt-1 bg-white text-slate-900 text-sm"
                 value={tipo as any}
                 onChange={(e) => {
-                  setTipo((e.target.value ? Number(e.target.value) : "") as any);
+                  setTipo(
+                    (e.target.value ? Number(e.target.value) : "") as any
+                  );
                   setPage(1);
                 }}
               >
@@ -323,7 +371,9 @@ export default function AdminComunidadesList() {
                       h.cls || "",
                     ].join(" ")}
                   >
-                    {h.key !== "acciones" && h.key !== "moderador_correo" ? (
+                    {h.key !== "acciones" &&
+                    h.key !== "moderador_correo" &&
+                    h.key !== "plan_id" ? (
                       <button
                         className="inline-flex items-center gap-1 justify-center w-full"
                         onClick={() => onSort(h.key)}
@@ -361,7 +411,10 @@ export default function AdminComunidadesList() {
                 const buffer = edit[r.id] || {};
                 const nombre = buffer.nombre ?? r.nombre;
                 const estadoVal =
-                  buffer.estado_comunidad_id ?? r.estado_comunidad_id ?? undefined;
+                  buffer.estado_comunidad_id ??
+                  r.estado_comunidad_id ??
+                  undefined;
+                const planVal = buffer.plan_id ?? r.plan_id ?? null;
                 const changed = hasChanges(r);
                 const hasMod = !!r.moderador_correo;
                 const accent = rowAccent(estadoVal);
@@ -417,6 +470,37 @@ export default function AdminComunidadesList() {
                         </span>
                       ) : (
                         <span className="text-slate-400">—</span>
+                      )}
+                    </td>
+
+                    {/* 🔹 plan */}
+                    <td className="px-3 py-3 whitespace-nowrap">
+                      {planes.length > 0 ? (
+                        <select
+                          className="input h-9 min-w-[8rem] text-center"
+                          value={planVal ?? ""}
+                          onChange={(e) =>
+                            setEditField(r.id, {
+                              plan_id: e.target.value
+                                ? Number(e.target.value)
+                                : null,
+                            })
+                          }
+                        >
+                          <option value="">Sin plan</option>
+                          {planes.map((p) => (
+                            <option key={p.id} value={p.id}>
+                              {p.nombre}
+                              {p.max_usuarios
+                                ? ` (${p.max_usuarios} usuarios)`
+                                : ""}
+                            </option>
+                          ))}
+                        </select>
+                      ) : (
+                        <span className="text-slate-400 text-xs">
+                          {planesError || "Planes no cargados"}
+                        </span>
                       )}
                     </td>
 

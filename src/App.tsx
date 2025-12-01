@@ -42,6 +42,10 @@ import PerfilPublico from "./pages/perfil/PerfilPublico";
 // Notificaciones
 import NotificationsPage from "./pages/notificaciones/NotificationsPage";
 
+// Restaurar Contraseña
+import ForgotPassword from "./pages/ForgotPassword";
+import ResetPassword from "./pages/ResetPassword";
+
 function PrivateShell({ children }: { children: React.ReactNode }) {
   return (
     <>
@@ -80,6 +84,23 @@ export default function App() {
       <Route path="/nosotros" element={<PublicShell><Nosotros /></PublicShell>} />
       <Route path="/como-funciona" element={<PublicShell><ComoFunciona /></PublicShell>} />
       <Route path="/contacto" element={<PublicShell><Contacto /></PublicShell>} />
+      {/* 🔹 Recuperación de contraseña */}
+      <Route
+        path="/auth/recuperar"
+        element={
+          <PublicShell>
+            <ForgotPassword />
+          </PublicShell>
+        }
+      />
+      <Route
+        path="/auth/restablecer-password"
+        element={
+          <PublicShell>
+            <ResetPassword />
+          </PublicShell>
+        }
+      />
 
       {/* Generales */}
       <Route

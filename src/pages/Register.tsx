@@ -91,6 +91,7 @@ export default function Register() {
     correo_no_habilitado: "Tu correo está en el padrón pero aún no ha sido habilitado.",
     correo_ya_usado: "Este correo ya fue utilizado para registrarse.",
     faltan_residencia: "Faltan datos de residencia (torre/dirección y número).",
+    plan_max_users_reached: "La comunidad alcanzó el máximo de usuarios permitidos por su plan. Contacta al administrador.",
   };
 
   const tipoFromId = (id?: 1 | 2) => (id === 1 ? "departamento" : id === 2 ? "condominio" : undefined);

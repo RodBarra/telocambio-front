@@ -28,4 +28,11 @@ export const AuthApi = {
       "/auth/verify-access",
       payload
     ),
+
+  solicitarRestauracionPassword: (correo: string, codigo?: string) =>
+    http.post("/auth/restauracion-password/solicitar", { correo, codigo }),
+
+  // 🔹 NUEVO: confirmar restauración con token + nueva contraseña
+  confirmarRestauracionPassword: (token: string, password: string) =>
+    http.post("/auth/restauracion-password/confirmar", { token, password }),
 };

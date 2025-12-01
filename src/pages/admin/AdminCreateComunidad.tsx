@@ -1,7 +1,11 @@
 import { FormEvent, useEffect, useState } from "react";
 import { useSearchParams, useNavigate } from "react-router-dom";
-import { ComunidadesApi } from "../../services/comunidades";
-import type { Comunidad } from "../../services/comunidades";
+import {
+  ComunidadesApi,
+  type Comunidad,
+  PlanesApi,
+  type Plan,
+} from "../../services/comunidades";
 import { UsuariosApi } from "../../services/usuarios";
 import { AlertOk, AlertErr } from "../../components/Alert";
 import { Field } from "../../components/form";
@@ -12,17 +16,20 @@ type FormState = {
   nombre: string;
   direccion: string;
   codigo: string;
+  // 🔹 NUEVO
+  plan_id: number | null;
 };
 
 type Errors = Partial<Record<keyof FormState, string>>;
 
 // Ajustado al formulario de Crear Comunidad
 const initialForm: FormState = {
-  comunidad_id: 0, // Esto parece ser de Crear Moderador, lo dejaré por si acaso
+  comunidad_id: 0, // Esto parece ser de Crear Moderador, lo dejo por si acaso
   tipo_id: 1,
   nombre: "",
   direccion: "",
   codigo: "",
+  plan_id: 1, // 🔹 por defecto Plan Básico (id=1)
 };
 
 function normalizeCodigo(raw: string) {
@@ -40,12 +47,19 @@ function validateForm(f: FormState): Errors {
 
   if (![1, 2].includes(f.tipo_id)) e.tipo_id = "Selecciona un tipo válido.";
 
-  if (f.direccion && f.direccion.length > 120) e.direccion = "Máximo 120 caracteres.";
+  if (f.direccion && f.direccion.length > 120)
+    e.direccion = "Máximo 120 caracteres.";
 
   const cod = f.codigo.trim();
   if (!cod) e.codigo = "Ingresa el código de comunidad.";
   else if (!/^[A-Z0-9-]{3,32}$/.test(cod)) {
-    e.codigo = "Usa mayúsculas, números y guiones (3–32). Ej: DPT-LOSROBLES-001";
+    e.codigo =
+      "Usa mayúsculas, números y guiones (3–32). Ej: DPT-LOSROBLES-001";
+  }
+
+  // 🔹 Validar plan
+  if (!f.plan_id || f.plan_id <= 0) {
+    e.plan_id = "Selecciona un plan para la comunidad.";
   }
 
   return e;
@@ -53,7 +67,7 @@ function validateForm(f: FormState): Errors {
 
 // Nota: El nombre del archivo es AdminCreateComunidad.tsx pero el componente se llama CrearComunidad.
 // Asumo que el nombre correcto del componente es AdminCreateComunidad
-export default function AdminCreateComunidad() { 
+export default function AdminCreateComunidad() {
   const [params] = useSearchParams();
   const preId = Number(params.get("comunidad_id") || 0); // Esto es de Moderador, ¿seguro que va aquí?
   const nav = useNavigate();
@@ -67,6 +81,11 @@ export default function AdminCreateComunidad() {
   const [errBanner, setErrBanner] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
 
+  // 🔹 estado local para planes
+  const [planes, setPlanes] = useState<Plan[]>([]);
+  const [planesError, setPlanesError] = useState<string | null>(null);
+  const [planesLoading, setPlanesLoading] = useState(false);
+
   const set = <K extends keyof FormState>(k: K, v: FormState[K]) =>
     setForm((f) => ({ ...f, [k]: v }));
 
@@ -75,20 +94,31 @@ export default function AdminCreateComunidad() {
     setErrors((prev) => ({ ...prev, [k]: e[k] }));
   };
 
-  // Este useEffect es de Crear Moderador, no aplica a Crear Comunidad.
-  // Lo comento para evitar confusiones.
-  // useEffect(() => {
-  //   ComunidadesApi.list({ page_size: 1000, sin_moderador: 1 as any })
-  //     .then(({ data }) => setComs((data.items || []).filter((c) => !c.moderador_correo)))
-  //     .catch(async () => {
-  //       try {
-  //         const { data } = await ComunidadesApi.list({ page_size: 1000 });
-  //         setComs((data.items || []).filter((c) => !c.moderador_correo));
-  //       } catch {
-  //         /* noop */
-  //       }
-  //     });
-  // }, []);
+  // 🔹 Cargar planes activos al montar
+  useEffect(() => {
+    const loadPlanes = async () => {
+      setPlanesLoading(true);
+      setPlanesError(null);
+      try {
+        const { data } = await PlanesApi.list();
+        // data puede ser array directo (según backend)
+        const list = Array.isArray(data) ? data : (data as any).items || [];
+        const activos = (list as Plan[]).filter((p) => p.activo);
+        setPlanes(activos);
+
+        // si no hay plan seteado en el form, toma el primero activo
+        if (!form.plan_id && activos.length > 0) {
+          setForm((f) => ({ ...f, plan_id: activos[0].id }));
+        }
+      } catch {
+        setPlanesError("No se pudieron cargar los planes.");
+      } finally {
+        setPlanesLoading(false);
+      }
+    };
+
+    loadPlanes();
+  }, []);
 
   const onSubmit = async (e: FormEvent) => {
     e.preventDefault();
@@ -106,6 +136,8 @@ export default function AdminCreateComunidad() {
         tipo_id: form.tipo_id,
         direccion: form.direccion.trim() || undefined,
         codigo: form.codigo.trim(),
+        // 🔹 enviar plan_id
+        plan_id: form.plan_id ?? undefined,
       });
       setOkBanner("Comunidad creada correctamente.");
       setForm(initialForm);
@@ -127,9 +159,10 @@ export default function AdminCreateComunidad() {
     form.tipo_id === 1
       ? "url('/bg-departamento.png')"
       : "url('/bg-condominio.png')";
-      
+
   const activeClass = "bg-blue-500 text-white shadow";
-  const inactiveClass = "bg-white text-blue-500 border border-blue-500 hover:bg-blue-500 hover:text-white";
+  const inactiveClass =
+    "bg-white text-blue-500 border border-blue-500 hover:bg-blue-500 hover:text-white";
 
   return (
     <div
@@ -140,8 +173,7 @@ export default function AdminCreateComunidad() {
         className="max-w-3xl w-full rounded-xl shadow-2xl p-8 bg-cover bg-center"
         style={{ backgroundImage: "url('/fondoformulario.jpg')" }}
       >
-        
-        {/* --- INICIO DE LA MODIFICACIÓN (TÍTULO Y BOTÓN VOLVER) --- */}
+        {/* --- TÍTULO Y BOTÓN VOLVER --- */}
         <div className="relative flex items-center justify-between mb-6">
           <button
             type="button"
@@ -150,14 +182,13 @@ export default function AdminCreateComunidad() {
           >
             &larr; Volver
           </button>
-          
+
           <h1 className="absolute left-1/2 -translate-x-1/2 text-3xl font-extrabold tracking-tight text-gray-900">
             Crear comunidad
           </h1>
-          
+
           <div aria-hidden="true"></div> {/* Espaciador */}
         </div>
-        {/* --- FIN DE LA MODIFICACIÓN --- */}
 
         {okBanner && (
           <div className="mb-4">
@@ -219,6 +250,43 @@ export default function AdminCreateComunidad() {
             </div>
           </Field>
 
+          {/* 🔹 PLAN */}
+          <Field label="Plan de la comunidad" error={errors.plan_id}>
+            <select
+              className={`input w-full ${
+                errors.plan_id ? "border-red-300 focus:ring-red-300" : ""
+              }`}
+              value={form.plan_id ?? ""}
+              onChange={(e) =>
+                set(
+                  "plan_id",
+                  e.target.value ? Number(e.target.value) : null
+                )
+              }
+              onBlur={() => touchField("plan_id")}
+              disabled={planesLoading || !!planesError}
+            >
+              <option value="">
+                {planesLoading
+                  ? "Cargando planes…"
+                  : "Selecciona un plan para esta comunidad"}
+              </option>
+              {planes.map((p) => (
+                <option key={p.id} value={p.id}>
+                  {p.nombre}
+                  {p.max_usuarios
+                    ? ` (${p.max_usuarios} usuarios máx.)`
+                    : ""}
+                </option>
+              ))}
+            </select>
+            {planesError && (
+              <p className="mt-1 text-xs text-rose-500">
+                {planesError} Intenta recargar la página.
+              </p>
+            )}
+          </Field>
+
           {/* Dirección */}
           <Field
             label="Dirección (opcional)"
@@ -258,7 +326,7 @@ export default function AdminCreateComunidad() {
             />
           </Field>
 
-          {/* --- INICIO DE LA MODIFICACIÓN (BOTONES CENTRADOS) --- */}
+          {/* BOTÓN */}
           <div className="flex justify-center gap-2 pt-4">
             <button
               type="submit"
@@ -268,7 +336,6 @@ export default function AdminCreateComunidad() {
               {loading ? "Creando..." : "Crear comunidad"}
             </button>
           </div>
-          {/* --- FIN DE LA MODIFICACIÓN --- */}
         </form>
       </div>
     </div>
